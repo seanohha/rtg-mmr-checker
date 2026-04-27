@@ -237,8 +237,25 @@ for owner, group in by_owner.items():
                     if last and last.get("mmr", "").strip():
                         c1, c2 = st.columns([1, 2])
                         with c1:
+                            health_html = ""
+                            try:
+                                mmr_n = int(last["mmr"])
+                                actual_n = int(last.get("actual_mmr", "").strip())
+                                diff = mmr_n - actual_n
+                                color = "#10b981" if diff >= 0 else "#ef4444"
+                                sign = "+" if diff >= 0 else ""
+                                health_html = (
+                                    f"<span style='font-size:14px;color:{color};"
+                                    f"font-weight:600;margin-left:6px;'>"
+                                    f"({sign}{diff})</span>"
+                                )
+                            except (ValueError, AttributeError):
+                                pass
                             st.markdown(
-                                f"<div style='font-size:30px;font-weight:700;color:{color_for(idx)};line-height:1;'>{last['mmr']}</div>",
+                                f"<div style='line-height:1;'>"
+                                f"<span style='font-size:30px;font-weight:700;color:{color_for(idx)};'>{last['mmr']}</span>"
+                                f"{health_html}"
+                                f"</div>",
                                 unsafe_allow_html=True,
                             )
                             if last.get("rank"):
