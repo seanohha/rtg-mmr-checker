@@ -1,0 +1,106 @@
+{
+    "summoners": [
+        {
+            "name": "SasimySean",
+            "tag": "4174",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Sean"
+        },
+        {
+            "name": "일회용라이타",
+            "tag": "KR1",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Sean"
+        },
+        {
+            "name": "떼그라션2",
+            "tag": "4174",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Sean"
+        },
+        {
+            "name": "떼그라션",
+            "tag": "4174",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Sean"
+        },
+        {
+            "name": "떼그라숀",
+            "tag": "4174",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Sean"
+        },
+        {
+            "name": "떼그라대",
+            "tag": "KR11",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Dani"
+        },
+        {
+            "name": "떼그라월",
+            "tag": "1234",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Wallace"
+        },
+        {
+            "name": "떼그라월2",
+            "tag": "1234",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Wallace"
+        },
+        {
+            "name": "떼그라호",
+            "tag": "0627",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "함팀장님"
+        },
+        {
+            "name": "qwer",
+            "tag": "a000",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "함팀장님"
+        },
+        {
+            "name": "거북이",
+            "tag": "0627",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "함팀장님"
+        },
+        {
+            "name": "떼그라클",
+            "tag": "k91",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Michael"
+        },
+        {
+            "name": "펑키왈숙",
+            "tag": "6117",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Motaju"
+        },
+        {
+            "name": "떼그라쥬",
+            "tag": "RTG",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Motaju"
+        }
+    ],
+    "check_interval_minutes": 60,
+    "log_file": "mmr_history.csv",
+    "headless": true,
+    "google_sheet_id": "1PMT3jGslVsZtZctOQLQtcb8NSQ1yhPmki7-7AkZMs34"
+}

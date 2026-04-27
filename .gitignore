@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude / preview helpers
+.claude/
+
+# FastAPI prototype (replaced by Streamlit)
+app.py
+static/
+
+# Probe / temp files
+probe*.py
+probe*.html
+_*.json
