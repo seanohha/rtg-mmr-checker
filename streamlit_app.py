@@ -399,11 +399,35 @@ for owner in sorted(by_owner.keys(), key=_owner_key):
                                 )
                             except (ValueError, AttributeError):
                                 pass
+
+                            delta_html = ""
+                            if len(rows) >= 2:
+                                try:
+                                    prev_mmr = int((rows[-2].get("mmr") or "").strip())
+                                    cur_mmr = int(last["mmr"])
+                                    d = cur_mmr - prev_mmr
+                                    if d == 0:
+                                        delta_html = (
+                                            "<div style='font-size:11px;color:#8a96a8;'>"
+                                            "= 0</div>"
+                                        )
+                                    else:
+                                        arrow = "▲" if d > 0 else "▼"
+                                        dc = "#10b981" if d > 0 else "#ef4444"
+                                        sgn = "+" if d > 0 else ""
+                                        delta_html = (
+                                            f"<div style='font-size:11px;color:{dc};"
+                                            f"font-weight:600;'>{arrow} {sgn}{d}</div>"
+                                        )
+                                except (ValueError, AttributeError, KeyError):
+                                    pass
+
                             st.markdown(
                                 f"<div style='line-height:1;'>"
                                 f"<span style='font-size:30px;font-weight:700;color:{color_for(idx)};'>{last['mmr']}</span>"
                                 f"{health_html}"
-                                f"</div>",
+                                f"</div>"
+                                f"{delta_html}",
                                 unsafe_allow_html=True,
                             )
                             if last.get("rank"):
