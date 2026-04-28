@@ -153,7 +153,7 @@ def render_combined_chart(summoners: list[dict], grouped: dict[str, list[dict]])
         yaxis=dict(
             title="MMR",
             showgrid=True,
-            dtick=100,
+            dtick=50,
             gridcolor="rgba(255,255,255,0.18)",
             gridwidth=1,
             minor=dict(
