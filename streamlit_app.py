@@ -127,15 +127,40 @@ def render_sparkline(rows: list[dict], color: str):
             hovertemplate="%{x}<br>%{y} MMR<extra></extra>",
         )
     )
+
+    annotations = []
+    y_pad = 5
+    if ys:
+        max_v = max(ys)
+        min_v = min(ys)
+        max_idx = ys.index(max_v)
+        min_idx = ys.index(min_v)
+        annotations.append(dict(
+            x=xs[max_idx], y=max_v, text=str(max_v),
+            showarrow=False, yshift=8, xanchor="center",
+            font=dict(size=9, color="#e8eef5"),
+        ))
+        if max_v != min_v:
+            annotations.append(dict(
+                x=xs[min_idx], y=min_v, text=str(min_v),
+                showarrow=False, yshift=-8, xanchor="center",
+                font=dict(size=9, color="#8a96a8"),
+            ))
+            y_pad = max(8, (max_v - min_v) * 0.25)
+
     fig.update_layout(
         template="plotly_dark",
-        height=70,
-        margin=dict(l=0, r=0, t=0, b=0),
+        height=80,
+        margin=dict(l=4, r=4, t=10, b=10),
         showlegend=False,
         xaxis=dict(visible=False),
-        yaxis=dict(visible=False, range=[min(ys) - 5, max(ys) + 5] if ys else [0, 1]),
+        yaxis=dict(
+            visible=False,
+            range=[min(ys) - y_pad, max(ys) + y_pad] if ys else [0, 1],
+        ),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
+        annotations=annotations,
     )
     return fig
 
