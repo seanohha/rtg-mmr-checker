@@ -19,11 +19,13 @@ def now_kst() -> datetime:
     """Naive datetime in Asia/Seoul, independent of server timezone."""
     return datetime.now(KST).replace(tzinfo=None)
 
+from deeplol_stats import DEEPLOL_HEADERS, fetch_flex_stats
 from history import append_record, group_by_summoner, read_history
 from mmr_fetcher import DEFAULT_HEADERS, fetch_mmr
 
 ROOT = Path(__file__).parent
 CONFIG_PATH = ROOT / "config.json"
+DEEPLOL_STATS_PATH = ROOT / "deeplol_stats.json"
 
 PALETTE = [
     "#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#a855f7",
@@ -57,14 +59,48 @@ def get_summoners() -> list[dict]:
 
 
 def fetch_one_sync(summoner: dict):
-    """Run async fetch in sync context."""
+    """Fetch MMR + deeplol flex stats concurrently. Returns (mmr_result, stats_or_none)."""
     async def go():
-        async with httpx.AsyncClient(headers=DEFAULT_HEADERS, timeout=30.0) as client:
-            return await fetch_mmr(summoner, client=client)
+        # Two clients: each uses different default headers.
+        async with (
+            httpx.AsyncClient(headers=DEFAULT_HEADERS, timeout=30.0) as mmr_client,
+            httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=30.0) as dl_client,
+        ):
+            mmr_task = asyncio.create_task(fetch_mmr(summoner, client=mmr_client))
+            stats_task = asyncio.create_task(fetch_flex_stats(summoner, client=dl_client))
+            return await asyncio.gather(mmr_task, stats_task)
     return asyncio.run(go())
 
 
-def record_if_ok(summoner: dict, result) -> None:
+def load_deeplol_stats() -> dict:
+    if not DEEPLOL_STATS_PATH.exists():
+        return {}
+    try:
+        return json.loads(DEEPLOL_STATS_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_deeplol_stats(data: dict) -> None:
+    DEEPLOL_STATS_PATH.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def update_deeplol_stats(summoner: dict, stats) -> None:
+    if stats is None:
+        return
+    data = load_deeplol_stats()
+    key = f"{summoner['name']}#{summoner['tag']}"
+    data[key] = {
+        **stats.to_dict(),
+        "updated_at": now_kst().isoformat(timespec="seconds"),
+    }
+    save_deeplol_stats(data)
+
+
+def record_if_ok(summoner: dict, result, stats=None) -> None:
     if result.ok and result.mmr is not None:
         append_record(
             history_path(),
@@ -75,6 +111,7 @@ def record_if_ok(summoner: dict, result) -> None:
             actual_mmr=result.actual_mmr,
             actual_rank=result.actual_rank,
         )
+    update_deeplol_stats(summoner, stats)
 
 
 def parse_history_for_chart(rows: list[dict]) -> tuple[list[str], list[int]]:
@@ -199,6 +236,7 @@ st.markdown(
 summoners = get_summoners()
 hist_rows = read_history(history_path())
 grouped = group_by_summoner(hist_rows)
+deeplol_all = load_deeplol_stats()
 
 # Header row
 header_left, header_right = st.columns([4, 1])
@@ -234,8 +272,8 @@ if refresh_all_clicked:
     start = time.time()
     ok_n = fail_n = 0
     for i, s in enumerate(summoners):
-        result = fetch_one_sync(s)
-        record_if_ok(s, result)
+        result, stats = fetch_one_sync(s)
+        record_if_ok(s, result, stats)
         if result.ok:
             ok_n += 1
         else:
@@ -277,6 +315,33 @@ for owner, group in by_owner.items():
 
                     st.markdown(f"**{s['name']}**  `#{s['tag']}`")
                     st.caption(f"{s['region']} · {s['queue_type']}")
+
+                    flex = deeplol_all.get(key)
+                    if flex:
+                        wr = flex.get("winrate", 0)
+                        kda = flex.get("kda", 0)
+                        wr_color = "#10b981" if wr >= 50 else "#ef4444"
+                        kda_color = (
+                            "#10b981" if kda >= 2.5
+                            else "#ef4444" if kda < 1.5
+                            else "#e8eef5"
+                        )
+                        st.markdown(
+                            f"<div style='font-size:11px;color:#a0acbf;line-height:1.4;'>"
+                            f"<span style='opacity:0.7;'>자유 </span>"
+                            f"<span>{flex['games']}전 </span>"
+                            f"<span style='color:#10b981;'>{flex['wins']}승</span> "
+                            f"<span style='color:#ef4444;'>{flex['losses']}패</span>"
+                            f" · <span style='color:{wr_color};font-weight:600;'>{wr:.0f}%</span>"
+                            f" · <span style='color:{kda_color};font-weight:600;'>{kda:.2f} KDA</span>"
+                            f"<br><span style='opacity:0.65;'>"
+                            f"{flex['avg_kills']:.1f}/"
+                            f"{flex['avg_deaths']:.1f}/"
+                            f"{flex['avg_assists']:.1f}"
+                            f"</span>"
+                            f"</div>",
+                            unsafe_allow_html=True,
+                        )
 
                     if last and last.get("mmr", "").strip():
                         c1, c2 = st.columns([1, 2])
@@ -331,8 +396,8 @@ for owner, group in by_owner.items():
 
                     if clicked:
                         with st.spinner(f"Refreshing {key}..."):
-                            result = fetch_one_sync(s)
-                            record_if_ok(s, result)
+                            result, stats = fetch_one_sync(s)
+                            record_if_ok(s, result, stats)
                         if result.ok:
                             st.success(f"MMR: {result.mmr}")
                         else:
