@@ -149,8 +149,20 @@ def render_combined_chart(summoners: list[dict], grouped: dict[str, list[dict]])
         template="plotly_dark",
         height=420,
         margin=dict(l=40, r=40, t=20, b=40),
-        yaxis_title="MMR",
         xaxis_title="",
+        yaxis=dict(
+            title="MMR",
+            showgrid=True,
+            dtick=100,
+            gridcolor="rgba(255,255,255,0.18)",
+            gridwidth=1,
+            minor=dict(
+                showgrid=True,
+                dtick=10,
+                gridcolor="rgba(255,255,255,0.05)",
+                gridwidth=1,
+            ),
+        ),
         legend=dict(orientation="v", x=1.02, xanchor="left", y=1, yanchor="top"),
         hovermode="closest",
     )
