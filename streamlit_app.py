@@ -6,10 +6,18 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import httpx
 import plotly.graph_objects as go
 import streamlit as st
+
+KST = ZoneInfo("Asia/Seoul")
+
+
+def now_kst() -> datetime:
+    """Naive datetime in Asia/Seoul, independent of server timezone."""
+    return datetime.now(KST).replace(tzinfo=None)
 
 from history import append_record, group_by_summoner, read_history
 from mmr_fetcher import DEFAULT_HEADERS, fetch_mmr
@@ -62,7 +70,7 @@ def record_if_ok(summoner: dict, result) -> None:
             history_path(),
             summoner,
             result.mmr,
-            datetime.now(),
+            now_kst(),
             rank=result.rank,
             actual_mmr=result.actual_mmr,
             actual_rank=result.actual_rank,
@@ -194,11 +202,22 @@ grouped = group_by_summoner(hist_rows)
 
 # Header row
 header_left, header_right = st.columns([4, 1])
+def _fmt_ts(ts: str) -> str:
+    """Render an ISO timestamp from CSV as 'YYYY-MM-DD HH:MM' (KST)."""
+    try:
+        return datetime.fromisoformat(ts).strftime("%Y-%m-%d %H:%M")
+    except (ValueError, TypeError):
+        return ts
+
+
 with header_left:
     st.title("RTG MMR Checker")
     if hist_rows:
         latest = max(r["timestamp"] for r in hist_rows)
-        st.caption(f"Last update: {latest}  ·  예상 ~{format_seconds(len(summoners) * 5)}")
+        st.caption(
+            f"Last update: {_fmt_ts(latest)} (KST)  ·  "
+            f"예상 ~{format_seconds(len(summoners) * 5)}"
+        )
     else:
         st.caption("No data yet")
 
