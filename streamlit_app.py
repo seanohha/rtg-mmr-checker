@@ -400,27 +400,42 @@ for owner in sorted(by_owner.keys(), key=_owner_key):
                             except (ValueError, AttributeError):
                                 pass
 
+                            # Delta against the latest *different* MMR — repeated identical
+                                # refreshes don't reset the indicator, so users see actual
+                                # MMR movement (e.g. ▲ +20) until the next real change.
                             delta_html = ""
-                            if len(rows) >= 2:
-                                try:
-                                    prev_mmr = int((rows[-2].get("mmr") or "").strip())
-                                    cur_mmr = int(last["mmr"])
+                            try:
+                                cur_mmr = int(last["mmr"])
+                                prev_mmr = None
+                                prev_ts = None
+                                for r in reversed(rows[:-1]):
+                                    raw = (r.get("mmr") or "").strip()
+                                    if not raw:
+                                        continue
+                                    try:
+                                        v = int(raw)
+                                    except ValueError:
+                                        continue
+                                    if v != cur_mmr:
+                                        prev_mmr = v
+                                        prev_ts = r.get("timestamp")
+                                        break
+                                if prev_mmr is not None:
                                     d = cur_mmr - prev_mmr
-                                    if d == 0:
-                                        delta_html = (
-                                            "<div style='font-size:11px;color:#8a96a8;'>"
-                                            "= 0</div>"
-                                        )
-                                    else:
-                                        arrow = "▲" if d > 0 else "▼"
-                                        dc = "#10b981" if d > 0 else "#ef4444"
-                                        sgn = "+" if d > 0 else ""
-                                        delta_html = (
-                                            f"<div style='font-size:11px;color:{dc};"
-                                            f"font-weight:600;'>{arrow} {sgn}{d}</div>"
-                                        )
-                                except (ValueError, AttributeError, KeyError):
-                                    pass
+                                    arrow = "▲" if d > 0 else "▼"
+                                    dc = "#10b981" if d > 0 else "#ef4444"
+                                    sgn = "+" if d > 0 else ""
+                                    title = (
+                                        f"directly previous {prev_mmr} at {prev_ts}"
+                                        if prev_ts else ""
+                                    )
+                                    delta_html = (
+                                        f"<div title='{title}' "
+                                        f"style='font-size:11px;color:{dc};font-weight:600;'>"
+                                        f"{arrow} {sgn}{d}</div>"
+                                    )
+                            except (ValueError, AttributeError, KeyError):
+                                pass
 
                             st.markdown(
                                 f"<div style='line-height:1;'>"
