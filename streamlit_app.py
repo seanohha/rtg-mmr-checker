@@ -298,32 +298,72 @@ with header_right:
         "Refresh All", type="primary", use_container_width=True
     )
 
+REFRESH_THROTTLE_MIN = 10
+
+
+def _last_refresh_age_min(summoner: dict) -> float | None:
+    """Minutes since the most recent CSV record for this summoner. None if no
+    record exists or the timestamp can't be parsed."""
+    rows = grouped.get(f"{summoner['name']}#{summoner['tag']}", [])
+    if not rows:
+        return None
+    try:
+        ts = datetime.fromisoformat(rows[-1]["timestamp"])
+    except (ValueError, KeyError, TypeError):
+        return None
+    return (now_kst() - ts).total_seconds() / 60.0
+
+
 # Refresh All flow
 if refresh_all_clicked:
-    progress = st.progress(0.0, text="Refreshing...")
-    status = st.empty()
-    start = time.time()
-    ok_n = fail_n = 0
-    for i, s in enumerate(summoners):
-        result, stats = fetch_one_sync(s)
-        record_if_ok(s, result, stats)
-        if result.ok:
-            ok_n += 1
+    fresh_summoners = []
+    skipped: list[tuple[dict, float]] = []
+    for s in summoners:
+        age = _last_refresh_age_min(s)
+        if age is not None and age < REFRESH_THROTTLE_MIN:
+            skipped.append((s, age))
         else:
-            fail_n += 1
-        elapsed = time.time() - start
-        progress.progress(
-            (i + 1) / len(summoners),
-            text=f"({i+1}/{len(summoners)}) {s['name']}#{s['tag']}  ·  {format_seconds(elapsed)} 경과",
+            fresh_summoners.append(s)
+
+    if not fresh_summoners:
+        # Everyone was just refreshed by another client — bail out.
+        oldest_age = max(a for _, a in skipped) if skipped else 0
+        st.info(
+            f"{len(skipped)}명 모두 {REFRESH_THROTTLE_MIN}분 이내에 갱신됨 "
+            f"(가장 오래된 기록도 {oldest_age:.1f}분 전). "
+            f"잠시 후 다시 시도하세요."
         )
-    progress.empty()
-    status.empty()
-    elapsed = time.time() - start
-    msg = f"Refresh complete ({format_seconds(elapsed)}): {ok_n} ok, {fail_n} failed"
-    (st.success if fail_n == 0 else st.warning)(msg)
-    push_state_to_gist()
-    # Rerun to pick up new history rows
-    st.rerun()
+    else:
+        if skipped:
+            st.info(
+                f"{len(skipped)}명은 {REFRESH_THROTTLE_MIN}분 이내에 갱신되어 skip "
+                f"(나머지 {len(fresh_summoners)}명만 갱신)"
+            )
+        progress = st.progress(0.0, text="Refreshing...")
+        status = st.empty()
+        start = time.time()
+        ok_n = fail_n = 0
+        total = len(fresh_summoners)
+        for i, s in enumerate(fresh_summoners):
+            result, stats = fetch_one_sync(s)
+            record_if_ok(s, result, stats)
+            if result.ok:
+                ok_n += 1
+            else:
+                fail_n += 1
+            elapsed = time.time() - start
+            progress.progress(
+                (i + 1) / total,
+                text=f"({i+1}/{total}) {s['name']}#{s['tag']}  ·  {format_seconds(elapsed)} 경과",
+            )
+        progress.empty()
+        status.empty()
+        elapsed = time.time() - start
+        msg = f"Refresh complete ({format_seconds(elapsed)}): {ok_n} ok, {fail_n} failed"
+        (st.success if fail_n == 0 else st.warning)(msg)
+        push_state_to_gist()
+        # Rerun to pick up new history rows
+        st.rerun()
 
 # Combined comparison chart
 st.subheader("Combined comparison")
@@ -345,10 +385,21 @@ range_days = RANGE_OPTIONS.get(selected_range or "전체")
 
 
 def _filter_by_range(rows: list[dict], days: int | None) -> list[dict]:
+    """Filter rows to the window. Include one anchor point from before the
+    cutoff so the chart can draw a connecting line into the window (otherwise
+    summoners with a single in-window point would render as lone dots)."""
     if days is None:
         return rows
     cutoff = (now_kst() - timedelta(days=days)).isoformat(timespec="seconds")
-    return [r for r in rows if (r.get("timestamp") or "") >= cutoff]
+    in_range, before = [], []
+    for r in rows:
+        if (r.get("timestamp") or "") >= cutoff:
+            in_range.append(r)
+        else:
+            before.append(r)
+    if in_range and before:
+        return [before[-1]] + in_range
+    return in_range
 
 
 grouped_for_chart = {k: _filter_by_range(v, range_days) for k, v in grouped.items()}
@@ -523,12 +574,19 @@ for owner in sorted(by_owner.keys(), key=_owner_key):
                             st.caption(last["timestamp"])
 
                     if clicked:
-                        with st.spinner(f"Refreshing {key}..."):
-                            result, stats = fetch_one_sync(s)
-                            record_if_ok(s, result, stats)
-                            push_state_to_gist()
-                        if result.ok:
-                            st.success(f"MMR: {result.mmr}")
+                        age = _last_refresh_age_min(s)
+                        if age is not None and age < REFRESH_THROTTLE_MIN:
+                            st.info(
+                                f"{age:.1f}분 전에 갱신됨. "
+                                f"{REFRESH_THROTTLE_MIN}분 이내에는 skip합니다."
+                            )
                         else:
-                            st.error(f"Failed: {result.error}")
-                        st.rerun()
+                            with st.spinner(f"Refreshing {key}..."):
+                                result, stats = fetch_one_sync(s)
+                                record_if_ok(s, result, stats)
+                                push_state_to_gist()
+                            if result.ok:
+                                st.success(f"MMR: {result.mmr}")
+                            else:
+                                st.error(f"Failed: {result.error}")
+                            st.rerun()
