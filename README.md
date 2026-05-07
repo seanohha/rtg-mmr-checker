@@ -34,10 +34,30 @@ streamlit run streamlit_app.py
    Main file path: `streamlit_app.py`.
 4. Deploy 클릭.
 
-> **주의**: Streamlit Community Cloud는 파일시스템이 ephemeral 입니다.
-> 앱 재시작 시 `mmr_history.csv` 가 저장소의 commit된 상태로 되돌아갑니다.
-> 영구 히스토리가 필요하면 GitHub Actions 같은 외부 트리거로 주기적으로
-> commit 하거나, 외부 스토리지(Sheets, S3, Postgres 등)를 연결하세요.
+### 영구 보존 — GitHub Gist 연동
+
+Streamlit Community Cloud의 파일시스템은 ephemeral 이기 때문에 컨테이너가
+재시작되면 `mmr_history.csv` 와 `deeplol_stats.json` 이 사라집니다. 본 앱은
+secret GitHub gist 하나에 두 파일을 동기화해서 영구 보존합니다.
+
+**설정 방법** (Streamlit Cloud → app settings → Secrets):
+
+```toml
+[gist]
+token   = "ghp_xxxxxxxxxxxxxxxxxxxx"   # Personal Access Token (gist scope)
+gist_id = "abcdef0123456789..."         # secret gist ID (두 파일 포함)
+```
+
+토큰은 https://github.com/settings/tokens 에서 `gist` scope 만 활성화해서
+fine-grained PAT 또는 classic PAT 를 만드세요. 기존 secret gist를 만들려면:
+
+```bash
+gh gist create --desc "RTG MMR Checker state" mmr_history.csv deeplol_stats.json
+```
+
+Secrets 가 설정되면 앱 시작 시 gist에서 두 파일을 가져오고, 모든 refresh
+이후 자동으로 gist를 갱신합니다. Secrets 없이 실행되면 로컬 파일만 사용
+(기존 동작과 동일).
 
 ## 사용
 

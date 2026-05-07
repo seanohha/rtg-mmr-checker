@@ -24,3 +24,6 @@ static/
 probe*.py
 probe*.html
 _*.json
+
+# Streamlit secrets (gist token / IDs etc.) — never commit
+.streamlit/secrets.toml

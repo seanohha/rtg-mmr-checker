@@ -20,6 +20,7 @@ def now_kst() -> datetime:
     return datetime.now(KST).replace(tzinfo=None)
 
 from deeplol_stats import DEEPLOL_HEADERS, fetch_flex_stats
+import gist_storage
 from history import append_record, group_by_summoner, read_history
 from mmr_fetcher import DEFAULT_HEADERS, fetch_mmr
 
@@ -52,6 +53,25 @@ def load_config() -> dict:
 def history_path() -> str:
     cfg = load_config()
     return str(ROOT / cfg.get("log_file", "mmr_history.csv"))
+
+
+@st.cache_resource
+def _hydrate_from_gist_once() -> dict:
+    """Pull persistent state from the configured gist into local files exactly
+    once per Streamlit session. Subsequent calls are no-ops thanks to caching.
+    """
+    if not gist_storage.configured():
+        return {"configured": False}
+    h_ok, s_ok = gist_storage.hydrate_from_gist(
+        history_path(), str(DEEPLOL_STATS_PATH)
+    )
+    return {"configured": True, "history_loaded": h_ok, "stats_loaded": s_ok}
+
+
+def push_state_to_gist() -> bool:
+    if not gist_storage.configured():
+        return False
+    return gist_storage.push_local_files(history_path(), str(DEEPLOL_STATS_PATH))
 
 
 def get_summoners() -> list[dict]:
@@ -245,6 +265,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+_hydrate_from_gist_once()  # Pulls remote state into local files on first run.
 summoners = get_summoners()
 hist_rows = read_history(history_path())
 grouped = group_by_summoner(hist_rows)
@@ -300,6 +321,7 @@ if refresh_all_clicked:
     elapsed = time.time() - start
     msg = f"Refresh complete ({format_seconds(elapsed)}): {ok_n} ok, {fail_n} failed"
     (st.success if fail_n == 0 else st.warning)(msg)
+    push_state_to_gist()
     # Rerun to pick up new history rows
     st.rerun()
 
@@ -476,6 +498,7 @@ for owner in sorted(by_owner.keys(), key=_owner_key):
                         with st.spinner(f"Refreshing {key}..."):
                             result, stats = fetch_one_sync(s)
                             record_if_ok(s, result, stats)
+                            push_state_to_gist()
                         if result.ok:
                             st.success(f"MMR: {result.mmr}")
                         else:
