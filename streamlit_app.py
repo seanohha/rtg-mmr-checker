@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -327,7 +327,35 @@ if refresh_all_clicked:
 
 # Combined comparison chart
 st.subheader("Combined comparison")
-st.plotly_chart(render_combined_chart(summoners, grouped), use_container_width=True)
+
+RANGE_OPTIONS = {
+    "전체": None,
+    "최근 3달": 90,
+    "최근 1달": 30,
+    "최근 1주": 7,
+}
+selected_range = st.segmented_control(
+    "기간",
+    options=list(RANGE_OPTIONS.keys()),
+    default="전체",
+    label_visibility="collapsed",
+    key="combined_range",
+)
+range_days = RANGE_OPTIONS.get(selected_range or "전체")
+
+
+def _filter_by_range(rows: list[dict], days: int | None) -> list[dict]:
+    if days is None:
+        return rows
+    cutoff = (now_kst() - timedelta(days=days)).isoformat(timespec="seconds")
+    return [r for r in rows if (r.get("timestamp") or "") >= cutoff]
+
+
+grouped_for_chart = {k: _filter_by_range(v, range_days) for k, v in grouped.items()}
+st.plotly_chart(
+    render_combined_chart(summoners, grouped_for_chart),
+    use_container_width=True,
+)
 
 # Per-owner cards
 OWNER_ORDER = ["Sean", "함팀장님", "Wallace", "Motaju", "Michael", "Dani"]
