@@ -69,9 +69,11 @@ def _hydrate_from_gist_once() -> dict:
 
 
 def push_state_to_gist() -> bool:
+    """Push local state to gist. Merges with whatever's already in the gist
+    first so concurrent sessions don't clobber each other's appends."""
     if not gist_storage.configured():
         return False
-    return gist_storage.push_local_files(history_path(), str(DEEPLOL_STATS_PATH))
+    return gist_storage.push_with_merge(history_path(), str(DEEPLOL_STATS_PATH))
 
 
 def get_summoners() -> list[dict]:

@@ -16,10 +16,15 @@ Files inside the gist must be named exactly "mmr_history.csv" and
 """
 from __future__ import annotations
 
+import csv
+import io
+import json
 import os
 from pathlib import Path
 
 import httpx
+
+from history import CSV_HEADER
 
 GIST_API = "https://api.github.com/gists"
 HISTORY_FILENAME = "mmr_history.csv"
@@ -137,3 +142,87 @@ def push_local_files(history_path: str, stats_path: str) -> bool:
     if not payload:
         return False
     return push_files(payload)
+
+
+def _parse_csv(text: str) -> list[dict]:
+    if text.startswith("﻿"):
+        text = text[1:]
+    if not text.strip():
+        return []
+    return list(csv.DictReader(io.StringIO(text)))
+
+
+def _merge_csv(local_text: str, remote_text: str) -> str:
+    """Union local and remote rows keyed by (timestamp, name, tag) — keeps
+    every distinct refresh recorded by any client. Stable ordering by
+    timestamp."""
+    local_rows = _parse_csv(local_text)
+    remote_rows = _parse_csv(remote_text)
+    seen: set[tuple[str, str, str]] = set()
+    merged: list[dict] = []
+    for r in local_rows + remote_rows:
+        key = (
+            r.get("timestamp", ""),
+            r.get("name", ""),
+            r.get("tag", ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(r)
+    merged.sort(key=lambda r: r.get("timestamp", ""))
+    buf = io.StringIO()
+    # lineterminator='\n' keeps the string single-newline; Path.write_text
+    # will translate to the platform native line ending exactly once.
+    w = csv.DictWriter(buf, fieldnames=CSV_HEADER, lineterminator="\n")
+    w.writeheader()
+    for r in merged:
+        w.writerow({k: r.get(k, "") for k in CSV_HEADER})
+    return "﻿" + buf.getvalue()
+
+
+def _merge_json(local_text: str, remote_text: str) -> str:
+    """Per-summoner entry merge — newest `updated_at` wins."""
+    def load(text: str) -> dict:
+        try:
+            return json.loads(text) if text.strip() else {}
+        except json.JSONDecodeError:
+            return {}
+
+    local_d = load(local_text)
+    remote_d = load(remote_text)
+    out = dict(remote_d)
+    for k, v in local_d.items():
+        existing = out.get(k)
+        if existing is None or (v.get("updated_at", "") > existing.get("updated_at", "")):
+            out[k] = v
+    return json.dumps(out, ensure_ascii=False, indent=2)
+
+
+def push_with_merge(history_path: str, stats_path: str) -> bool:
+    """Pull remote state, merge with local, write back, and push the union.
+    Prevents the 'lost update' race when multiple sessions hydrate, refresh,
+    and push around the same time — each session's appends survive instead of
+    being clobbered by whoever pushed last."""
+    if not configured():
+        return False
+    remote = fetch_files() or {}
+
+    if HISTORY_FILENAME in remote:
+        try:
+            local_csv = Path(history_path).read_text(encoding="utf-8-sig")
+        except OSError:
+            local_csv = ""
+        merged_csv = _merge_csv(local_csv, remote[HISTORY_FILENAME])
+        # Write merged result back without adding another BOM.
+        Path(history_path).write_text(merged_csv, encoding="utf-8")
+
+    if STATS_FILENAME in remote:
+        try:
+            local_json = Path(stats_path).read_text(encoding="utf-8")
+        except OSError:
+            local_json = ""
+        merged_json = _merge_json(local_json, remote[STATS_FILENAME])
+        Path(stats_path).write_text(merged_json, encoding="utf-8")
+
+    return push_local_files(history_path, stats_path)
