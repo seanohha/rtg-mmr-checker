@@ -148,7 +148,11 @@ def parse_history_for_chart(rows: list[dict]) -> tuple[list[str], list[int]]:
     return xs, ys
 
 
-def render_combined_chart(summoners: list[dict], grouped: dict[str, list[dict]]):
+def render_combined_chart(
+    summoners: list[dict],
+    grouped: dict[str, list[dict]],
+    x_range: tuple[str, str] | None = None,
+):
     fig = go.Figure()
     for i, s in enumerate(summoners):
         key = f"{s['name']}#{s['tag']}"
@@ -165,11 +169,14 @@ def render_combined_chart(summoners: list[dict], grouped: dict[str, list[dict]])
                 hovertemplate="%{x}<br>%{y} MMR<extra>" + key + "</extra>",
             )
         )
+    xaxis_kwargs: dict = {"title": ""}
+    if x_range is not None:
+        xaxis_kwargs["range"] = list(x_range)
     fig.update_layout(
         template="plotly_dark",
         height=420,
         margin=dict(l=40, r=40, t=20, b=40),
-        xaxis_title="",
+        xaxis=xaxis_kwargs,
         yaxis=dict(
             title="MMR",
             showgrid=True,
@@ -403,8 +410,15 @@ def _filter_by_range(rows: list[dict], days: int | None) -> list[dict]:
 
 
 grouped_for_chart = {k: _filter_by_range(v, range_days) for k, v in grouped.items()}
+chart_x_range: tuple[str, str] | None = None
+if range_days is not None:
+    _now = now_kst()
+    chart_x_range = (
+        (_now - timedelta(days=range_days)).isoformat(timespec="seconds"),
+        _now.isoformat(timespec="seconds"),
+    )
 st.plotly_chart(
-    render_combined_chart(summoners, grouped_for_chart),
+    render_combined_chart(summoners, grouped_for_chart, x_range=chart_x_range),
     use_container_width=True,
 )
 
