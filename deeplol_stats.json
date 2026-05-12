@@ -9,7 +9,7 @@
     "avg_deaths": 6.4,
     "avg_assists": 5.8,
     "kda": 1.75,
-    "updated_at": "2026-05-12T12:54:53"
+    "updated_at": "2026-05-12T20:56:17"
   },
   "일회용라이타#KR1": {
     "level": 42,
@@ -21,23 +21,23 @@
     "avg_deaths": 6.6,
     "avg_assists": 5.9,
     "kda": 1.43,
-    "updated_at": "2026-05-12T12:54:53"
+    "updated_at": "2026-05-12T20:56:24"
   },
   "떼그라션2#4174": {
     "level": 47,
-    "games": 9,
-    "wins": 2,
-    "losses": 7,
-    "winrate": 22.2,
-    "avg_kills": 4.7,
-    "avg_deaths": 6.4,
-    "avg_assists": 7.9,
-    "kda": 1.95,
-    "updated_at": "2026-05-12T12:54:53"
+    "games": 14,
+    "wins": 5,
+    "losses": 9,
+    "winrate": 35.7,
+    "avg_kills": 5.9,
+    "avg_deaths": 6.3,
+    "avg_assists": 8.1,
+    "kda": 2.23,
+    "updated_at": "2026-05-12T20:56:34"
   },
   "떼그라션#4174": {
     "level": 36,
-    "updated_at": "2026-05-12T12:54:53"
+    "updated_at": "2026-05-12T20:48:52"
   },
   "떼그라숀#4174": {
     "level": 40,
@@ -49,19 +49,19 @@
     "avg_deaths": 2.5,
     "avg_assists": 7.0,
     "kda": 4.2,
-    "updated_at": "2026-05-12T12:54:53"
+    "updated_at": "2026-05-12T20:56:43"
   },
   "떼그라대#dani": {
     "level": 73,
     "games": 16,
-    "wins": 8,
-    "losses": 8,
-    "winrate": 50.0,
-    "avg_kills": 3.5,
-    "avg_deaths": 6.3,
-    "avg_assists": 13.4,
-    "kda": 2.67,
-    "updated_at": "2026-05-12T12:54:53"
+    "wins": 6,
+    "losses": 10,
+    "winrate": 37.5,
+    "avg_kills": 3.3,
+    "avg_deaths": 7.3,
+    "avg_assists": 14.2,
+    "kda": 2.39,
+    "updated_at": "2026-05-12T20:56:56"
   },
   "떼그라월#1234": {
     "level": 61,
@@ -69,23 +69,23 @@
     "wins": 10,
     "losses": 10,
     "winrate": 50.0,
-    "avg_kills": 6.3,
-    "avg_deaths": 7.3,
-    "avg_assists": 8.2,
-    "kda": 1.99,
-    "updated_at": "2026-05-12T12:54:53"
+    "avg_kills": 6.4,
+    "avg_deaths": 7.5,
+    "avg_assists": 9.2,
+    "kda": 2.09,
+    "updated_at": "2026-05-12T20:57:03"
   },
   "떼그라호#0627": {
     "level": 80,
     "games": 20,
-    "wins": 5,
-    "losses": 15,
-    "winrate": 25.0,
-    "avg_kills": 9.4,
-    "avg_deaths": 7.0,
-    "avg_assists": 4.9,
-    "kda": 2.06,
-    "updated_at": "2026-05-12T12:54:53"
+    "wins": 9,
+    "losses": 11,
+    "winrate": 45.0,
+    "avg_kills": 10.7,
+    "avg_deaths": 7.5,
+    "avg_assists": 5.5,
+    "kda": 2.17,
+    "updated_at": "2026-05-12T20:57:16"
   },
   "qwer#a000": {
     "level": 82,
@@ -93,62 +93,74 @@
     "wins": 9,
     "losses": 11,
     "winrate": 45.0,
-    "avg_kills": 10.2,
+    "avg_kills": 9.4,
     "avg_deaths": 9.3,
-    "avg_assists": 7.0,
-    "kda": 1.85,
-    "updated_at": "2026-05-12T12:54:53"
+    "avg_assists": 6.7,
+    "kda": 1.72,
+    "updated_at": "2026-05-12T20:57:23"
   },
   "거북이#0627": {
     "level": 26,
-    "games": 7,
+    "games": 8,
     "wins": 4,
-    "losses": 3,
-    "winrate": 57.1,
-    "avg_kills": 11.7,
-    "avg_deaths": 7.1,
-    "avg_assists": 4.9,
-    "kda": 2.32,
-    "updated_at": "2026-05-12T12:54:53"
+    "losses": 4,
+    "winrate": 50.0,
+    "avg_kills": 12.4,
+    "avg_deaths": 7.9,
+    "avg_assists": 5.1,
+    "kda": 2.22,
+    "updated_at": "2026-05-12T20:49:04"
   },
   "왕 개#123": {
     "level": 10,
-    "updated_at": "2026-05-12T12:54:53"
+    "updated_at": "2026-05-12T20:57:27"
   },
   "떼그라클#k91": {
     "level": 106,
     "games": 18,
-    "wins": 9,
-    "losses": 9,
-    "winrate": 50.0,
-    "avg_kills": 6.6,
+    "wins": 8,
+    "losses": 10,
+    "winrate": 44.4,
+    "avg_kills": 6.7,
     "avg_deaths": 6.9,
-    "avg_assists": 8.6,
-    "kda": 2.18,
-    "updated_at": "2026-05-12T12:54:53"
+    "avg_assists": 8.3,
+    "kda": 2.19,
+    "updated_at": "2026-05-12T20:57:40"
   },
   "펑키왈숙#6117": {
-    "level": 20,
-    "games": 16,
-    "wins": 6,
-    "losses": 10,
-    "winrate": 37.5,
-    "avg_kills": 6.6,
-    "avg_deaths": 7.0,
-    "avg_assists": 5.7,
-    "kda": 1.75,
-    "updated_at": "2026-05-12T12:54:53"
+    "level": 88,
+    "games": 12,
+    "wins": 5,
+    "losses": 7,
+    "winrate": 41.7,
+    "avg_kills": 6.7,
+    "avg_deaths": 6.9,
+    "avg_assists": 9.5,
+    "kda": 2.34,
+    "updated_at": "2026-05-12T20:57:46"
   },
   "떼그라쥬#RTG": {
     "level": 54,
-    "games": 6,
+    "games": 7,
     "wins": 3,
-    "losses": 3,
-    "winrate": 50.0,
-    "avg_kills": 8.5,
-    "avg_deaths": 5.3,
-    "avg_assists": 11.5,
-    "kda": 3.75,
-    "updated_at": "2026-05-12T12:54:53"
+    "losses": 4,
+    "winrate": 42.9,
+    "avg_kills": 8.0,
+    "avg_deaths": 5.6,
+    "avg_assists": 11.3,
+    "kda": 3.46,
+    "updated_at": "2026-05-12T20:57:53"
+  },
+  "떼그라떼그라떼그라떼그라떼그라떼#kr12": {
+    "level": 33,
+    "games": 4,
+    "wins": 3,
+    "losses": 1,
+    "winrate": 75.0,
+    "avg_kills": 9.2,
+    "avg_deaths": 7.0,
+    "avg_assists": 4.8,
+    "kda": 2.0,
+    "updated_at": "2026-05-12T21:09:52"
   }
 }
