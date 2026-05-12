@@ -182,7 +182,10 @@ def _merge_csv(local_text: str, remote_text: str) -> str:
 
 
 def _merge_json(local_text: str, remote_text: str) -> str:
-    """Per-summoner entry merge — newest `updated_at` wins."""
+    """Per-summoner entry merge — newest `updated_at` wins. Also drops any
+    remote entry that's missing from local AND older than local's most-recent
+    update; this preserves intentional local deletions (e.g. when a summoner
+    no longer has recent ranked-flex games)."""
     def load(text: str) -> dict:
         try:
             return json.loads(text) if text.strip() else {}
@@ -191,11 +194,18 @@ def _merge_json(local_text: str, remote_text: str) -> str:
 
     local_d = load(local_text)
     remote_d = load(remote_text)
+    local_max_ts = max(
+        (v.get("updated_at", "") for v in local_d.values()), default=""
+    )
     out = dict(remote_d)
     for k, v in local_d.items():
         existing = out.get(k)
         if existing is None or (v.get("updated_at", "") > existing.get("updated_at", "")):
             out[k] = v
+    # Drop stale remote-only entries when local has clearly run since.
+    for k in list(out.keys()):
+        if k not in local_d and out[k].get("updated_at", "") < local_max_ts:
+            del out[k]
     return json.dumps(out, ensure_ascii=False, indent=2)
 
 

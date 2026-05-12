@@ -111,10 +111,15 @@ def save_deeplol_stats(data: dict) -> None:
 
 
 def update_deeplol_stats(summoner: dict, stats) -> None:
-    if stats is None:
-        return
     data = load_deeplol_stats()
     key = f"{summoner['name']}#{summoner['tag']}"
+    if stats is None:
+        # No recent ranked-flex games — drop any stale entry so the card
+        # stops showing leftover numbers from a previous refresh.
+        if key in data:
+            del data[key]
+            save_deeplol_stats(data)
+        return
     data[key] = {
         **stats.to_dict(),
         "updated_at": now_kst().isoformat(timespec="seconds"),
