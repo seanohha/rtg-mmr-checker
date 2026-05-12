@@ -37,6 +37,13 @@
         },
         {
             "name": "떼그라대",
+            "tag": "KR11",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Dani"
+        },
+        {
+            "name": "떼그라대",
             "tag": "dani",
             "region": "KR",
             "queue_type": "Ranked Flex",
