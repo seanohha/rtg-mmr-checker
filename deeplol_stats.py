@@ -62,9 +62,10 @@ class FlexStats:
         }
 
 
-async def _resolve_puuid(
+async def _resolve_summoner(
     summoner: dict, client: httpx.AsyncClient
-) -> str | None:
+) -> tuple[str | None, int | None]:
+    """Look up a summoner on deeplol. Returns (puuid, level)."""
     url = f"{API_BASE}/summoner/summoner"
     params = {
         "riot_id_name": summoner["name"],
@@ -73,9 +74,9 @@ async def _resolve_puuid(
     }
     r = await client.get(url, params=params)
     if r.status_code != 200:
-        return None
+        return None, None
     info = (r.json() or {}).get("summoner_basic_info_dict") or {}
-    return info.get("puu_id") or None
+    return info.get("puu_id") or None, info.get("level")
 
 
 async def _fetch_matches(
@@ -137,25 +138,41 @@ def _aggregate(matches: list[dict], puuid: str) -> FlexStats | None:
     )
 
 
-async def fetch_flex_stats(
+async def fetch_summoner_info(
     summoner: dict,
     client: httpx.AsyncClient | None = None,
     count: int = 50,
-) -> FlexStats | None:
-    """Fetch recent ranked-flex stats for one summoner. Returns None on failure."""
+) -> dict | None:
+    """Fetch deeplol level + recent ranked-flex aggregate. Returns:
+      - None if the deeplol lookup failed (account not found)
+      - {"level": int, [optional flex fields...]} otherwise
+
+    A summoner with no recent flex games still returns {"level": N} so the
+    card can show their account level even when the flex section is empty.
+    """
     own = client is None
     if own:
         client = httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=30.0)
     try:
-        puuid = await _resolve_puuid(summoner, client)
+        puuid, level = await _resolve_summoner(summoner, client)
         if not puuid:
             return None
+        out: dict = {}
+        if level is not None:
+            out["level"] = level
         matches = await _fetch_matches(
             puuid, summoner["region"], QUEUE_FLEX, count, client
         )
-        return _aggregate(matches, puuid)
+        flex = _aggregate(matches, puuid)
+        if flex is not None:
+            out.update(flex.to_dict())
+        return out or None
     except httpx.HTTPError:
         return None
     finally:
         if own:
             await client.aclose()
+
+
+# Backwards-compat alias used elsewhere in the project.
+fetch_flex_stats = fetch_summoner_info

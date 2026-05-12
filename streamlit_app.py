@@ -110,18 +110,19 @@ def save_deeplol_stats(data: dict) -> None:
     )
 
 
-def update_deeplol_stats(summoner: dict, stats) -> None:
+def update_deeplol_stats(summoner: dict, info: dict | None) -> None:
+    """Persist the deeplol entry. `info` is a dict (level + optional flex
+    fields) or None when the lookup itself failed."""
     data = load_deeplol_stats()
     key = f"{summoner['name']}#{summoner['tag']}"
-    if stats is None:
-        # No recent ranked-flex games — drop any stale entry so the card
-        # stops showing leftover numbers from a previous refresh.
+    if not info:
+        # Lookup failed entirely — drop any stale entry.
         if key in data:
             del data[key]
             save_deeplol_stats(data)
         return
     data[key] = {
-        **stats.to_dict(),
+        **info,
         "updated_at": now_kst().isoformat(timespec="seconds"),
     }
     save_deeplol_stats(data)
@@ -474,13 +475,24 @@ for owner in sorted(by_owner.keys(), key=_owner_key):
                     rows = grouped.get(key, [])
                     last = rows[-1] if rows else None
 
-                    st.markdown(f"**{s['name']}**  `#{s['tag']}`")
+                    info = deeplol_all.get(key) or {}
+                    level = info.get("level")
+                    level_badge = (
+                        f" <span style='font-size:11px;color:#a0acbf;"
+                        f"background:#1a2028;padding:1px 6px;border-radius:8px;"
+                        f"margin-left:4px;'>Lv.{level}</span>"
+                        if level
+                        else ""
+                    )
+                    st.markdown(
+                        f"**{s['name']}**  `#{s['tag']}`{level_badge}",
+                        unsafe_allow_html=True,
+                    )
                     st.caption(f"{s['region']} · {s['queue_type']}")
 
-                    flex = deeplol_all.get(key)
-                    if flex:
-                        wr = flex.get("winrate", 0)
-                        kda = flex.get("kda", 0)
+                    if info.get("games"):
+                        wr = info.get("winrate", 0)
+                        kda = info.get("kda", 0)
                         wr_color = "#10b981" if wr >= 50 else "#ef4444"
                         kda_color = (
                             "#10b981" if kda >= 2.5
@@ -490,15 +502,15 @@ for owner in sorted(by_owner.keys(), key=_owner_key):
                         st.markdown(
                             f"<div style='font-size:11px;color:#a0acbf;line-height:1.4;'>"
                             f"<span style='opacity:0.7;'>자유 </span>"
-                            f"<span>{flex['games']}전 </span>"
-                            f"<span style='color:#10b981;'>{flex['wins']}승</span> "
-                            f"<span style='color:#ef4444;'>{flex['losses']}패</span>"
+                            f"<span>{info['games']}전 </span>"
+                            f"<span style='color:#10b981;'>{info['wins']}승</span> "
+                            f"<span style='color:#ef4444;'>{info['losses']}패</span>"
                             f" · <span style='color:{wr_color};font-weight:600;'>{wr:.0f}%</span>"
                             f" · <span style='color:{kda_color};font-weight:600;'>{kda:.2f} KDA</span>"
                             f"<br><span style='opacity:0.65;'>"
-                            f"{flex['avg_kills']:.1f}/"
-                            f"{flex['avg_deaths']:.1f}/"
-                            f"{flex['avg_assists']:.1f}"
+                            f"{info['avg_kills']:.1f}/"
+                            f"{info['avg_deaths']:.1f}/"
+                            f"{info['avg_assists']:.1f}"
                             f"</span>"
                             f"</div>",
                             unsafe_allow_html=True,
