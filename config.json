@@ -37,13 +37,6 @@
         },
         {
             "name": "떼그라대",
-            "tag": "KR11",
-            "region": "KR",
-            "queue_type": "Ranked Flex",
-            "owner": "Dani"
-        },
-        {
-            "name": "떼그라대",
             "tag": "dani",
             "region": "KR",
             "queue_type": "Ranked Flex",
@@ -84,7 +77,7 @@
             "queue_type": "Ranked Flex",
             "owner": "함팀장님"
         },
-         {
+        {
             "name": "왕 개",
             "tag": "123",
             "region": "KR",
