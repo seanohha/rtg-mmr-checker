@@ -28,9 +28,14 @@ DEEPLOL_HEADERS = {
     "X-DEEPLOL-SECRET": "false",
 }
 
-# queue_type values used by deeplol's match/matches endpoint
+# queue_type values used by deeplol's match/matches endpoint.
+# NB: deeplol seems to ignore this query param and return matches from every
+# queue regardless, so we still have to filter by Riot's queue_id below.
 QUEUE_FLEX = "ranked_flex_sr"
 QUEUE_SOLO = "ranked_solo_5x5"
+
+# Riot queue IDs we care about
+QUEUE_ID_FLEX = 440  # 5v5 Ranked Flex SR
 
 
 @dataclass
@@ -100,6 +105,11 @@ def _aggregate(matches: list[dict], puuid: str) -> FlexStats | None:
         basic = m.get("match_basic_dict") or {}
         if basic.get("is_remake"):
             continue
+        # deeplol's queue_type query param doesn't actually filter, so enforce
+        # Ranked Flex here. Without this, non-flex queues (Swift Play 480,
+        # Solo 420, Normals, ARAM, etc.) would leak into the aggregate.
+        if basic.get("queue_id") != QUEUE_ID_FLEX:
+            continue
         my = next(
             (p for p in m.get("participants_list") or [] if p.get("puu_id") == puuid),
             None,
@@ -130,7 +140,7 @@ def _aggregate(matches: list[dict], puuid: str) -> FlexStats | None:
 async def fetch_flex_stats(
     summoner: dict,
     client: httpx.AsyncClient | None = None,
-    count: int = 20,
+    count: int = 50,
 ) -> FlexStats | None:
     """Fetch recent ranked-flex stats for one summoner. Returns None on failure."""
     own = client is None

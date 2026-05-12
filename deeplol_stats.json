@@ -1,14 +1,14 @@
 {
   "SasimySean#4174": {
-    "games": 20,
+    "games": 16,
     "wins": 8,
-    "losses": 12,
-    "winrate": 40.0,
-    "avg_kills": 5.7,
-    "avg_deaths": 7.0,
-    "avg_assists": 7.8,
-    "kda": 1.91,
-    "updated_at": "2026-05-07T14:02:45"
+    "losses": 8,
+    "winrate": 50.0,
+    "avg_kills": 5.4,
+    "avg_deaths": 6.4,
+    "avg_assists": 5.8,
+    "kda": 1.75,
+    "updated_at": "2026-05-12T12:32:53"
   },
   "일회용라이타#KR1": {
     "games": 7,
@@ -19,29 +19,18 @@
     "avg_deaths": 6.6,
     "avg_assists": 5.9,
     "kda": 1.43,
-    "updated_at": "2026-05-07T14:02:55"
+    "updated_at": "2026-05-12T12:32:53"
   },
   "떼그라션2#4174": {
-    "games": 7,
+    "games": 9,
     "wins": 2,
-    "losses": 5,
-    "winrate": 28.6,
-    "avg_kills": 5.0,
-    "avg_deaths": 6.7,
-    "avg_assists": 8.3,
-    "kda": 1.98,
-    "updated_at": "2026-05-07T14:02:58"
-  },
-  "떼그라션#4174": {
-    "games": 2,
-    "wins": 2,
-    "losses": 0,
-    "winrate": 100.0,
-    "avg_kills": 5.5,
-    "avg_deaths": 3.5,
-    "avg_assists": 5.0,
-    "kda": 3.0,
-    "updated_at": "2026-05-07T14:03:05"
+    "losses": 7,
+    "winrate": 22.2,
+    "avg_kills": 4.7,
+    "avg_deaths": 6.4,
+    "avg_assists": 7.9,
+    "kda": 1.95,
+    "updated_at": "2026-05-12T12:32:53"
   },
   "떼그라숀#4174": {
     "games": 2,
@@ -52,94 +41,94 @@
     "avg_deaths": 2.5,
     "avg_assists": 7.0,
     "kda": 4.2,
-    "updated_at": "2026-05-07T14:03:11"
+    "updated_at": "2026-05-12T12:32:53"
   },
-  "떼그라대#KR11": {
-    "games": 20,
-    "wins": 13,
-    "losses": 7,
-    "winrate": 65.0,
-    "avg_kills": 3.5,
-    "avg_deaths": 5.6,
-    "avg_assists": 9.4,
-    "kda": 2.3,
-    "updated_at": "2026-05-07T14:03:24"
+  "떼그라대#dani": {
+    "games": 16,
+    "wins": 8,
+    "losses": 8,
+    "winrate": 50.0,
+    "avg_kills": 3.4,
+    "avg_deaths": 6.7,
+    "avg_assists": 13.8,
+    "kda": 2.57,
+    "updated_at": "2026-05-12T12:32:53"
   },
   "떼그라월#1234": {
     "games": 20,
-    "wins": 14,
-    "losses": 6,
-    "winrate": 70.0,
-    "avg_kills": 5.5,
-    "avg_deaths": 5.9,
-    "avg_assists": 6.7,
-    "kda": 2.07,
-    "updated_at": "2026-05-07T14:03:29"
+    "wins": 10,
+    "losses": 10,
+    "winrate": 50.0,
+    "avg_kills": 6.3,
+    "avg_deaths": 7.3,
+    "avg_assists": 8.2,
+    "kda": 1.99,
+    "updated_at": "2026-05-12T12:32:53"
   },
   "떼그라호#0627": {
     "games": 20,
-    "wins": 8,
-    "losses": 12,
-    "winrate": 40.0,
-    "avg_kills": 10.1,
-    "avg_deaths": 6.7,
-    "avg_assists": 5.4,
-    "kda": 2.31,
-    "updated_at": "2026-05-07T14:03:39"
+    "wins": 5,
+    "losses": 15,
+    "winrate": 25.0,
+    "avg_kills": 9.8,
+    "avg_deaths": 6.8,
+    "avg_assists": 4.7,
+    "kda": 2.1,
+    "updated_at": "2026-05-12T12:32:53"
   },
   "qwer#a000": {
     "games": 20,
-    "wins": 6,
-    "losses": 14,
-    "winrate": 30.0,
-    "avg_kills": 8.3,
-    "avg_deaths": 9.3,
-    "avg_assists": 5.8,
-    "kda": 1.52,
-    "updated_at": "2026-05-07T14:03:43"
-  },
-  "거북이#0627": {
-    "games": 4,
-    "wins": 1,
-    "losses": 3,
-    "winrate": 25.0,
-    "avg_kills": 8.5,
-    "avg_deaths": 8.0,
-    "avg_assists": 2.5,
-    "kda": 1.38,
-    "updated_at": "2026-05-07T14:03:53"
-  },
-  "떼그라클#k91": {
-    "games": 20,
-    "wins": 12,
-    "losses": 8,
-    "winrate": 60.0,
-    "avg_kills": 4.7,
-    "avg_deaths": 5.1,
-    "avg_assists": 6.1,
-    "kda": 2.12,
-    "updated_at": "2026-05-07T14:04:02"
-  },
-  "펑키왈숙#6117": {
-    "games": 20,
     "wins": 8,
     "losses": 12,
     "winrate": 40.0,
-    "avg_kills": 6.0,
-    "avg_deaths": 6.5,
-    "avg_assists": 5.2,
-    "kda": 1.73,
-    "updated_at": "2026-05-07T14:04:09"
+    "avg_kills": 10.0,
+    "avg_deaths": 9.4,
+    "avg_assists": 6.8,
+    "kda": 1.78,
+    "updated_at": "2026-05-12T12:32:53"
+  },
+  "거북이#0627": {
+    "games": 7,
+    "wins": 4,
+    "losses": 3,
+    "winrate": 57.1,
+    "avg_kills": 11.7,
+    "avg_deaths": 7.1,
+    "avg_assists": 4.9,
+    "kda": 2.32,
+    "updated_at": "2026-05-12T12:32:53"
+  },
+  "떼그라클#k91": {
+    "games": 18,
+    "wins": 10,
+    "losses": 8,
+    "winrate": 55.6,
+    "avg_kills": 6.7,
+    "avg_deaths": 6.8,
+    "avg_assists": 8.5,
+    "kda": 2.24,
+    "updated_at": "2026-05-12T12:32:53"
+  },
+  "펑키왈숙#6117": {
+    "games": 16,
+    "wins": 6,
+    "losses": 10,
+    "winrate": 37.5,
+    "avg_kills": 6.6,
+    "avg_deaths": 7.0,
+    "avg_assists": 5.7,
+    "kda": 1.75,
+    "updated_at": "2026-05-12T12:32:53"
   },
   "떼그라쥬#RTG": {
-    "games": 12,
-    "wins": 6,
-    "losses": 6,
+    "games": 6,
+    "wins": 3,
+    "losses": 3,
     "winrate": 50.0,
-    "avg_kills": 9.7,
-    "avg_deaths": 5.8,
-    "avg_assists": 11.2,
-    "kda": 3.62,
-    "updated_at": "2026-05-07T14:04:16"
+    "avg_kills": 8.5,
+    "avg_deaths": 5.3,
+    "avg_assists": 11.5,
+    "kda": 3.75,
+    "updated_at": "2026-05-12T12:32:53"
   }
 }
