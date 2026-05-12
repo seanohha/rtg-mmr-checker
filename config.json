@@ -104,6 +104,13 @@
             "region": "KR",
             "queue_type": "Ranked Flex",
             "owner": "Motaju"
+        },
+        {
+            "name": "떼그라떼그라떼그라떼그라떼그라떼",
+            "tag": "kr12",
+            "region": "KR",
+            "queue_type": "Ranked Flex",
+            "owner": "Motaju"
         }
     ],
     "check_interval_minutes": 60,
