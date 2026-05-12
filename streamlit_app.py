@@ -431,7 +431,6 @@ st.plotly_chart(
 )
 
 # Per-owner cards
-OWNER_ORDER = ["Sean", "함팀장님", "Wallace", "Motaju", "Michael", "Dani"]
 
 
 def _last_mmr(s: dict) -> int:
@@ -446,13 +445,6 @@ def _last_mmr(s: dict) -> int:
         return -1
 
 
-def _owner_key(owner: str) -> tuple[int, str]:
-    try:
-        return (OWNER_ORDER.index(owner), "")
-    except ValueError:
-        return (len(OWNER_ORDER), owner)
-
-
 by_owner: dict[str, list[tuple[int, dict]]] = {}
 for idx, s in enumerate(summoners):
     by_owner.setdefault(s.get("owner", "(no owner)"), []).append((idx, s))
@@ -461,9 +453,15 @@ for idx, s in enumerate(summoners):
 for owner in by_owner:
     by_owner[owner].sort(key=lambda t: _last_mmr(t[1]), reverse=True)
 
-for owner in sorted(by_owner.keys(), key=_owner_key):
+# Sort owner sections by number of summoners (desc); ties broken by owner name.
+ordered_owners = sorted(
+    by_owner.keys(),
+    key=lambda o: (-len(by_owner[o]), o),
+)
+
+for owner in ordered_owners:
     group = by_owner[owner]
-    st.markdown(f"##### {owner}")
+    st.markdown(f"##### {owner} ({len(group)})")
     cols_per_row = 4
     for row_start in range(0, len(group), cols_per_row):
         row = group[row_start : row_start + cols_per_row]
