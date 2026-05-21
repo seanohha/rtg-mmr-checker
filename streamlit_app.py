@@ -55,10 +55,11 @@ def history_path() -> str:
     return str(ROOT / cfg.get("log_file", "mmr_history.csv"))
 
 
-@st.cache_resource
+@st.cache_data(ttl=60, show_spinner=False)
 def _hydrate_from_gist_once() -> dict:
-    """Pull persistent state from the configured gist into local files exactly
-    once per Streamlit session. Subsequent calls are no-ops thanks to caching.
+    """Pull persistent state from the configured gist into local files.
+    cache_data(ttl=60) re-runs at most once per minute, so the container
+    picks up updates pushed by other sessions without waiting for a redeploy.
     """
     if not gist_storage.configured():
         return {"configured": False}
