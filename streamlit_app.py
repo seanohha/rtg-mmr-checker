@@ -19,7 +19,7 @@ def now_kst() -> datetime:
     """Naive datetime in Asia/Seoul, independent of server timezone."""
     return datetime.now(KST).replace(tzinfo=None)
 
-from deeplol_stats import DEEPLOL_HEADERS, fetch_flex_stats
+from deeplol_stats import DEEPLOL_HEADERS, fetch_flex_stats, fetch_live_status
 import gist_storage
 from history import append_record, group_by_summoner, read_history
 from mmr_fetcher import DEFAULT_HEADERS, fetch_mmr
@@ -287,6 +287,34 @@ hist_rows = read_history(history_path())
 grouped = group_by_summoner(hist_rows)
 deeplol_all = load_deeplol_stats()
 
+
+@st.cache_data(ttl=30, show_spinner=False)
+def fetch_live_statuses_cached(puuid_region_pairs: tuple[tuple[str, str], ...]) -> dict[str, bool]:
+    """Concurrently check live-game status for many summoners. TTL 30s so
+    cards show fresh in-game state without hammering deeplol on every
+    rerun. Returns {puu_id: bool}."""
+    async def go():
+        async with httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=10.0) as c:
+            tasks = [fetch_live_status(p, r, client=c) for p, r in puuid_region_pairs]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        out: dict[str, bool] = {}
+        for (p, _), res in zip(puuid_region_pairs, results):
+            out[p] = bool(res) and not isinstance(res, Exception)
+        return out
+    return asyncio.run(go())
+
+
+# Build (puu_id, region) pairs for summoners that have a cached puu_id.
+_pairs: list[tuple[str, str]] = []
+for s in summoners:
+    key = f"{s['name']}#{s['tag']}"
+    entry = deeplol_all.get(key) or {}
+    if entry.get("puu_id"):
+        _pairs.append((entry["puu_id"], s["region"]))
+live_by_puuid = (
+    fetch_live_statuses_cached(tuple(_pairs)) if _pairs else {}
+)
+
 # Header row
 header_left, header_right = st.columns([4, 1])
 def _fmt_ts(ts: str) -> str:
@@ -483,8 +511,20 @@ for owner in ordered_owners:
                         if level
                         else ""
                     )
+                    in_game = bool(
+                        info.get("puu_id")
+                        and live_by_puuid.get(info["puu_id"])
+                    )
+                    ingame_badge = (
+                        " <span title='현재 게임 중' style='font-size:11px;"
+                        "color:#fff;background:#ef4444;padding:1px 6px;"
+                        "border-radius:8px;margin-left:4px;font-weight:600;'>"
+                        "🔴 In Game</span>"
+                        if in_game
+                        else ""
+                    )
                     st.markdown(
-                        f"**{s['name']}**  `#{s['tag']}`{level_badge}",
+                        f"**{s['name']}**  `#{s['tag']}`{level_badge}{ingame_badge}",
                         unsafe_allow_html=True,
                     )
                     st.caption(f"{s['region']} · {s['queue_type']}")

@@ -145,10 +145,11 @@ async def fetch_summoner_info(
 ) -> dict | None:
     """Fetch deeplol level + recent ranked-flex aggregate. Returns:
       - None if the deeplol lookup failed (account not found)
-      - {"level": int, [optional flex fields...]} otherwise
+      - {"puu_id": str, "level": int, [optional flex fields...]} otherwise
 
-    A summoner with no recent flex games still returns {"level": N} so the
-    card can show their account level even when the flex section is empty.
+    A summoner with no recent flex games still returns level + puu_id so
+    the card can show their account level / live-status even when the
+    flex section is empty.
     """
     own = client is None
     if own:
@@ -157,7 +158,7 @@ async def fetch_summoner_info(
         puuid, level = await _resolve_summoner(summoner, client)
         if not puuid:
             return None
-        out: dict = {}
+        out: dict = {"puu_id": puuid}
         if level is not None:
             out["level"] = level
         matches = await _fetch_matches(
@@ -167,6 +168,35 @@ async def fetch_summoner_info(
         if flex is not None:
             out.update(flex.to_dict())
         return out or None
+    except httpx.HTTPError:
+        return None
+    finally:
+        if own:
+            await client.aclose()
+
+
+async def fetch_live_status(
+    puuid: str, region: str, client: httpx.AsyncClient | None = None
+) -> dict | None:
+    """Check whether a summoner is currently in a live game via deeplol's
+    spectator endpoint. Returns the response dict (game info) if in-game,
+    None if not in game or on any error. Cheap: one HTTP call per summoner.
+    """
+    own = client is None
+    if own:
+        client = httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=10.0)
+    try:
+        url = (
+            f"{API_BASE}/summoner/{puuid}/spectator.json"
+            f"?region={region.lower()}"
+        )
+        r = await client.get(url)
+        if r.status_code != 200:
+            return None
+        try:
+            return r.json()
+        except Exception:
+            return None
     except httpx.HTTPError:
         return None
     finally:
