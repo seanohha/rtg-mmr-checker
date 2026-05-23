@@ -175,28 +175,39 @@ async def fetch_summoner_info(
             await client.aclose()
 
 
+INGAME_WORKER_URL = "https://ingame-check.deeplol-gg.workers.dev/"
+
+
 async def fetch_live_status(
     puuid: str, region: str, client: httpx.AsyncClient | None = None
 ) -> dict | None:
     """Check whether a summoner is currently in a live game via deeplol's
-    spectator endpoint. Returns the response dict (game info) if in-game,
-    None if not in game or on any error. Cheap: one HTTP call per summoner.
+    ingame-check Cloudflare worker. The worker proxies Riot's spectator-v5
+    API: a 200 response with a `gameId` field means in-game; anything else
+    (404-like body, errors, missing gameId) means offline. Returns the
+    parsed JSON when in-game, None otherwise.
     """
     own = client is None
     if own:
         client = httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=10.0)
     try:
-        url = (
-            f"{API_BASE}/summoner/{puuid}/spectator.json"
-            f"?region={region.lower()}"
+        # POST multipart with puu_id + platform_id, matching how deeplol's
+        # frontend calls the worker.
+        r = await client.post(
+            INGAME_WORKER_URL,
+            data={"puu_id": puuid, "platform_id": region.upper()},
         )
-        r = await client.get(url)
         if r.status_code != 200:
             return None
         try:
-            return r.json()
+            data = r.json()
         except Exception:
             return None
+        # Worker returns a `gameId` only when the player is in a live game;
+        # offline responses come back as {"status": {"status_code": 500, ...}}.
+        if isinstance(data, dict) and data.get("gameId"):
+            return data
+        return None
     except httpx.HTTPError:
         return None
     finally:
