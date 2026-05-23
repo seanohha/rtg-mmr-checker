@@ -19,7 +19,14 @@ def now_kst() -> datetime:
     """Naive datetime in Asia/Seoul, independent of server timezone."""
     return datetime.now(KST).replace(tzinfo=None)
 
-from deeplol_stats import DEEPLOL_HEADERS, fetch_flex_stats, fetch_live_status
+from deeplol_stats import DEEPLOL_HEADERS, fetch_flex_stats
+try:
+    from deeplol_stats import fetch_live_status
+except ImportError:
+    # Defensive: if the deployed deeplol_stats is from an older revision that
+    # doesn't define fetch_live_status, fall back to a no-op so the rest of
+    # the app still loads.
+    fetch_live_status = None  # type: ignore
 import gist_storage
 from history import append_record, group_by_summoner, read_history
 from mmr_fetcher import DEFAULT_HEADERS, fetch_mmr
@@ -293,6 +300,9 @@ def fetch_live_statuses_cached(puuid_region_pairs: tuple[tuple[str, str], ...]) 
     """Concurrently check live-game status for many summoners. TTL 30s so
     cards show fresh in-game state without hammering deeplol on every
     rerun. Returns {puu_id: bool}."""
+    if fetch_live_status is None:
+        return {}
+
     async def go():
         async with httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=10.0) as c:
             tasks = [fetch_live_status(p, r, client=c) for p, r in puuid_region_pairs]
