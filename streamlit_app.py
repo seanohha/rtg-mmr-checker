@@ -46,7 +46,43 @@ def color_for(idx: int) -> str:
     return PALETTE[idx % len(PALETTE)]
 
 
+# Per-owner hues in rainbow order: red → orange → yellow → green → blue → purple.
+# Each tuple is (hue°, saturation%) — lightness is varied per summoner based
+# on MMR rank within the owner.
+OWNER_HUES: list[tuple[int, int]] = [
+    (358, 78),  # red
+    (28, 92),   # orange
+    (48, 90),   # yellow
+    (140, 60),  # green
+    (215, 78),  # blue
+    (278, 60),  # purple
+]
+# Fallback for >6 owners.
+OWNER_HUE_FALLBACK = (200, 10)  # neutral gray-blue
+
+
+def owner_summoner_color(owner_rank: int, mmr_rank: int, total: int) -> str:
+    """Return an HSL color for a summoner, shaded by their MMR rank inside
+    the owner's group. owner_rank picks the hue; mmr_rank=0 (highest MMR)
+    gets the darkest/most-saturated shade, total-1 gets the lightest."""
+    h, s = (
+        OWNER_HUES[owner_rank]
+        if 0 <= owner_rank < len(OWNER_HUES)
+        else OWNER_HUE_FALLBACK
+    )
+    if total <= 1:
+        lightness = 55.0
+    else:
+        # Higher MMR (lower mmr_rank) → darker; lower MMR → lighter.
+        lightness = 42.0 + (mmr_rank / (total - 1)) * 30.0
+    return f"hsl({h}, {s}%, {lightness:.1f}%)"
+
+
 def with_alpha(hex_color: str, alpha: float) -> str:
+    """Accept either a #rrggbb hex or an hsl(...) string and return an
+    rgba/hsla string with the given alpha."""
+    if hex_color.startswith("hsl("):
+        return "hsla" + hex_color[3:-1] + f", {alpha})"
     h = hex_color.lstrip("#")
     r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
     return f"rgba({r},{g},{b},{alpha})"
@@ -168,12 +204,13 @@ def render_combined_chart(
     summoners: list[dict],
     grouped: dict[str, list[dict]],
     x_range: tuple[str, str] | None = None,
+    color_map: dict[str, str] | None = None,
 ):
     fig = go.Figure()
     for i, s in enumerate(summoners):
         key = f"{s['name']}#{s['tag']}"
         xs, ys = parse_history_for_chart(grouped.get(key, []))
-        c = color_for(i)
+        c = (color_map or {}).get(key) or color_for(i)
         fig.add_trace(
             go.Scatter(
                 x=xs,
@@ -293,6 +330,39 @@ summoners = get_summoners()
 hist_rows = read_history(history_path())
 grouped = group_by_summoner(hist_rows)
 deeplol_all = load_deeplol_stats()
+
+
+def _last_mmr(s: dict) -> int:
+    """Latest recorded MMR for sorting; missing data sorts last."""
+    rows = grouped.get(f"{s['name']}#{s['tag']}", [])
+    if not rows:
+        return -1
+    raw = (rows[-1].get("mmr") or "").strip()
+    try:
+        return int(raw)
+    except ValueError:
+        return -1
+
+
+# Group summoners by owner; within each owner sort by MMR desc.
+by_owner: dict[str, list[tuple[int, dict]]] = {}
+for _idx, _s in enumerate(summoners):
+    by_owner.setdefault(_s.get("owner", "(no owner)"), []).append((_idx, _s))
+for _o in by_owner:
+    by_owner[_o].sort(key=lambda t: _last_mmr(t[1]), reverse=True)
+
+# Owner sections ordered by summoner count desc, then owner name.
+ordered_owners = sorted(by_owner.keys(), key=lambda o: (-len(by_owner[o]), o))
+
+# Build per-summoner color: owner hue + lightness shaded by MMR rank.
+color_by_key: dict[str, str] = {}
+for _owner_rank, _owner in enumerate(ordered_owners):
+    _group = by_owner[_owner]
+    for _mmr_rank, (_idx, _s) in enumerate(_group):
+        _key = f"{_s['name']}#{_s['tag']}"
+        color_by_key[_key] = owner_summoner_color(
+            _owner_rank, _mmr_rank, len(_group)
+        )
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -465,39 +535,16 @@ if range_days is not None:
         _now.isoformat(timespec="seconds"),
     )
 st.plotly_chart(
-    render_combined_chart(summoners, grouped_for_chart, x_range=chart_x_range),
+    render_combined_chart(
+        summoners,
+        grouped_for_chart,
+        x_range=chart_x_range,
+        color_map=color_by_key,
+    ),
     use_container_width=True,
 )
 
-# Per-owner cards
-
-
-def _last_mmr(s: dict) -> int:
-    """Latest recorded MMR for sorting; missing data sorts last."""
-    rows = grouped.get(f"{s['name']}#{s['tag']}", [])
-    if not rows:
-        return -1
-    raw = (rows[-1].get("mmr") or "").strip()
-    try:
-        return int(raw)
-    except ValueError:
-        return -1
-
-
-by_owner: dict[str, list[tuple[int, dict]]] = {}
-for idx, s in enumerate(summoners):
-    by_owner.setdefault(s.get("owner", "(no owner)"), []).append((idx, s))
-
-# Sort summoners within each owner by latest MMR desc.
-for owner in by_owner:
-    by_owner[owner].sort(key=lambda t: _last_mmr(t[1]), reverse=True)
-
-# Sort owner sections by number of summoners (desc); ties broken by owner name.
-ordered_owners = sorted(
-    by_owner.keys(),
-    key=lambda o: (-len(by_owner[o]), o),
-)
-
+# Per-owner cards — by_owner / ordered_owners / color_by_key already built above.
 for owner in ordered_owners:
     group = by_owner[owner]
     st.markdown(f"##### {owner} ({len(group)})")
@@ -620,9 +667,10 @@ for owner in ordered_owners:
                             except (ValueError, AttributeError, KeyError):
                                 pass
 
+                            card_color = color_by_key.get(key, color_for(idx))
                             st.markdown(
                                 f"<div style='line-height:1;'>"
-                                f"<span style='font-size:30px;font-weight:700;color:{color_for(idx)};'>{last['mmr']}</span>"
+                                f"<span style='font-size:30px;font-weight:700;color:{card_color};'>{last['mmr']}</span>"
                                 f"{health_html}"
                                 f"</div>"
                                 f"{delta_html}",
@@ -637,7 +685,7 @@ for owner in ordered_owners:
                                 )
                         with c2:
                             st.plotly_chart(
-                                render_sparkline(rows, color_for(idx)),
+                                render_sparkline(rows, color_by_key.get(key, color_for(idx))),
                                 use_container_width=True,
                                 config={"displayModeBar": False},
                                 key=f"spark-{idx}",
