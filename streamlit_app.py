@@ -65,17 +65,18 @@ def owner_summoner_color(owner_rank: int, mmr_rank: int, total: int) -> str:
     """Return an HSL color for a summoner, shaded by their MMR rank inside
     the owner's group. owner_rank picks the hue; mmr_rank=0 (highest MMR)
     gets the darkest/most-saturated shade, total-1 gets the lightest."""
-    h, s = (
+    h, base_s = (
         OWNER_HUES[owner_rank]
         if 0 <= owner_rank < len(OWNER_HUES)
         else OWNER_HUE_FALLBACK
     )
     if total <= 1:
-        lightness = 55.0
-    else:
-        # Higher MMR (lower mmr_rank) → darker; lower MMR → lighter.
-        lightness = 42.0 + (mmr_rank / (total - 1)) * 30.0
-    return f"hsl({h}, {s}%, {lightness:.1f}%)"
+        return f"hsl({h}, {base_s}%, 55%)"
+    # t=0 for top-MMR (deep, saturated), t=1 for bottom (light, pale).
+    t = mmr_rank / (total - 1)
+    lightness = 35.0 + t * 45.0          # 35% → 80%
+    saturation = max(35.0, base_s - t * 22.0)  # base → ~base-22, floor 35
+    return f"hsl({h}, {saturation:.0f}%, {lightness:.0f}%)"
 
 
 def with_alpha(hex_color: str, alpha: float) -> str:
