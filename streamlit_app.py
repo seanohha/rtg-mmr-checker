@@ -207,7 +207,26 @@ def render_combined_chart(
     color_map: dict[str, str] | None = None,
 ):
     fig = go.Figure()
-    for i, s in enumerate(summoners):
+
+    def _latest_mmr(s: dict) -> int:
+        rows = grouped.get(f"{s['name']}#{s['tag']}", [])
+        for r in reversed(rows):
+            raw = (r.get("mmr") or "").strip()
+            if raw:
+                try:
+                    return int(raw)
+                except ValueError:
+                    continue
+        return -1
+
+    # Stable index preserved so palette lookups still match the original
+    # config order if the caller didn't supply color_map.
+    sorted_summoners = sorted(
+        enumerate(summoners),
+        key=lambda pair: _latest_mmr(pair[1]),
+        reverse=True,
+    )
+    for i, s in sorted_summoners:
         key = f"{s['name']}#{s['tag']}"
         xs, ys = parse_history_for_chart(grouped.get(key, []))
         c = (color_map or {}).get(key) or color_for(i)
