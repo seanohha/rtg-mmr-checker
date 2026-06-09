@@ -164,6 +164,18 @@ async def fetch_summoner_info(
         matches = await _fetch_matches(
             puuid, summoner["region"], QUEUE_FLEX, count, client
         )
+        # Last-played: max creation_timestamp across ALL fetched matches,
+        # regardless of queue (so the indicator reflects total recency, not
+        # only ranked-flex recency). creation_timestamp is unix seconds.
+        last_played = None
+        for m in matches:
+            ts = (m.get("match_basic_dict") or {}).get("creation_timestamp")
+            if ts is not None:
+                ts_int = int(ts)
+                if last_played is None or ts_int > last_played:
+                    last_played = ts_int
+        if last_played is not None:
+            out["last_played_at"] = last_played
         flex = _aggregate(matches, puuid)
         if flex is not None:
             out.update(flex.to_dict())

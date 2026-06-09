@@ -329,6 +329,32 @@ def format_seconds(s: float) -> str:
     return f"{s // 60}분 {s % 60}초" if s % 60 else f"{s // 60}분"
 
 
+def relative_time_kor(ts_epoch: int | float | None) -> str | None:
+    """'5분 전' / '2시간 전' / '3일 전' / '2주 전' etc. None if input is None."""
+    if not ts_epoch:
+        return None
+    try:
+        ts = datetime.fromtimestamp(int(ts_epoch), tz=KST).replace(tzinfo=None)
+    except (ValueError, OSError, OverflowError):
+        return None
+    diff = (now_kst() - ts).total_seconds()
+    if diff < 0:
+        return "방금"
+    if diff < 60:
+        return "방금"
+    if diff < 3600:
+        return f"{int(diff // 60)}분 전"
+    if diff < 86400:
+        return f"{int(diff // 3600)}시간 전"
+    if diff < 86400 * 7:
+        return f"{int(diff // 86400)}일 전"
+    if diff < 86400 * 30:
+        return f"{int(diff // (86400 * 7))}주 전"
+    if diff < 86400 * 365:
+        return f"{int(diff // (86400 * 30))}달 전"
+    return f"{int(diff // (86400 * 365))}년 전"
+
+
 # ---- UI -------------------------------------------------------------
 
 st.set_page_config(page_title="RTG MMR Checker", page_icon="🎮", layout="wide")
@@ -600,8 +626,22 @@ for owner in ordered_owners:
                         if in_game
                         else ""
                     )
+                    # Only show "last played" when NOT currently in a game —
+                    # the In Game badge already conveys recency.
+                    last_played_html = ""
+                    if not in_game:
+                        rel = relative_time_kor(info.get("last_played_at"))
+                        if rel:
+                            last_played_html = (
+                                f" <span title='마지막 게임 종료' "
+                                f"style='font-size:11px;color:#a0acbf;"
+                                f"background:#1a2028;padding:1px 6px;"
+                                f"border-radius:8px;margin-left:4px;'>"
+                                f"🕒 {rel}</span>"
+                            )
                     st.markdown(
-                        f"**{s['name']}**  `#{s['tag']}`{level_badge}{ingame_badge}",
+                        f"**{s['name']}**  `#{s['tag']}`"
+                        f"{level_badge}{ingame_badge}{last_played_html}",
                         unsafe_allow_html=True,
                     )
                     st.caption(f"{s['region']} · {s['queue_type']}")
