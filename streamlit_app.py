@@ -125,16 +125,21 @@ def get_summoners() -> list[dict]:
     return load_config()["summoners"]
 
 
-def fetch_one_sync(summoner: dict):
-    """Fetch MMR + deeplol flex stats concurrently. Returns (mmr_result, stats_or_none)."""
+def fetch_one_sync(summoner: dict, with_mmr: bool = True):
+    """Fetch deeplol info (always) + optionally MMR. Returns (mmr_result_or_None,
+    info_dict_or_None). When with_mmr=False the rankedkings call is skipped
+    entirely — useful for throttled refreshes where we still want fresh
+    last_played_at / level / flex stats from deeplol."""
     async def go():
-        # Two clients: each uses different default headers.
         async with (
             httpx.AsyncClient(headers=DEFAULT_HEADERS, timeout=30.0) as mmr_client,
             httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=30.0) as dl_client,
         ):
-            mmr_task = asyncio.create_task(fetch_mmr(summoner, client=mmr_client))
             stats_task = asyncio.create_task(fetch_flex_stats(summoner, client=dl_client))
+            if not with_mmr:
+                stats = await stats_task
+                return None, stats
+            mmr_task = asyncio.create_task(fetch_mmr(summoner, client=mmr_client))
             return await asyncio.gather(mmr_task, stats_task)
     return asyncio.run(go())
 
@@ -174,7 +179,10 @@ def update_deeplol_stats(summoner: dict, info: dict | None) -> None:
 
 
 def record_if_ok(summoner: dict, result, stats=None) -> None:
-    if result.ok and result.mmr is not None:
+    """Persist MMR (CSV) and deeplol info (JSON). `result` may be None when
+    the MMR fetch was skipped by the throttle — only the deeplol entry is
+    updated in that case."""
+    if result is not None and result.ok and result.mmr is not None:
         append_record(
             history_path(),
             summoner,
@@ -495,45 +503,53 @@ if refresh_all_clicked:
         else:
             fresh_summoners.append(s)
 
-    if not fresh_summoners:
-        # Everyone was just refreshed by another client — bail out.
-        oldest_age = max(a for _, a in skipped) if skipped else 0
+    if skipped and not fresh_summoners:
         st.info(
-            f"{len(skipped)}명 모두 {REFRESH_THROTTLE_MIN}분 이내에 갱신됨 "
-            f"(가장 오래된 기록도 {oldest_age:.1f}분 전). "
-            f"잠시 후 다시 시도하세요."
+            f"{len(skipped)}명 모두 {REFRESH_THROTTLE_MIN}분 이내에 MMR 갱신됨 — "
+            f"deeplol 정보(레벨/최근 플레이)만 갱신합니다."
         )
-    else:
-        if skipped:
-            st.info(
-                f"{len(skipped)}명은 {REFRESH_THROTTLE_MIN}분 이내에 갱신되어 skip "
-                f"(나머지 {len(fresh_summoners)}명만 갱신)"
-            )
-        progress = st.progress(0.0, text="Refreshing...")
-        status = st.empty()
-        start = time.time()
-        ok_n = fail_n = 0
-        total = len(fresh_summoners)
-        for i, s in enumerate(fresh_summoners):
-            result, stats = fetch_one_sync(s)
-            record_if_ok(s, result, stats)
-            if result.ok:
-                ok_n += 1
-            else:
-                fail_n += 1
-            elapsed = time.time() - start
-            progress.progress(
-                (i + 1) / total,
-                text=f"({i+1}/{total}) {s['name']}#{s['tag']}  ·  {format_seconds(elapsed)} 경과",
-            )
-        progress.empty()
-        status.empty()
+    elif skipped:
+        st.info(
+            f"{len(skipped)}명은 {REFRESH_THROTTLE_MIN}분 이내에 MMR 갱신되어 "
+            f"deeplol 정보만 갱신 (나머지 {len(fresh_summoners)}명은 풀 갱신)"
+        )
+    progress = st.progress(0.0, text="Refreshing...")
+    status = st.empty()
+    start = time.time()
+    ok_n = fail_n = skip_n = 0
+    total = len(summoners)
+    skipped_set = {f"{s['name']}#{s['tag']}" for s, _ in skipped}
+    for i, s in enumerate(summoners):
+        key = f"{s['name']}#{s['tag']}"
+        is_throttled = key in skipped_set
+        # Throttled summoners still get a deeplol-only fetch so level /
+        # last_played_at update — only the rankedkings MMR call is skipped.
+        result, stats = fetch_one_sync(s, with_mmr=not is_throttled)
+        record_if_ok(s, result, stats)
+        if is_throttled:
+            skip_n += 1
+        elif result and result.ok:
+            ok_n += 1
+        else:
+            fail_n += 1
         elapsed = time.time() - start
-        msg = f"Refresh complete ({format_seconds(elapsed)}): {ok_n} ok, {fail_n} failed"
-        (st.success if fail_n == 0 else st.warning)(msg)
-        push_state_to_gist()
-        # Rerun to pick up new history rows
-        st.rerun()
+        suffix = " (deeplol only)" if is_throttled else ""
+        progress.progress(
+            (i + 1) / total,
+            text=f"({i+1}/{total}) {s['name']}#{s['tag']}{suffix}  ·  {format_seconds(elapsed)} 경과",
+        )
+    progress.empty()
+    status.empty()
+    elapsed = time.time() - start
+    parts = [f"{ok_n} ok"]
+    if fail_n:
+        parts.append(f"{fail_n} failed")
+    if skip_n:
+        parts.append(f"{skip_n} deeplol-only")
+    msg = f"Refresh complete ({format_seconds(elapsed)}): " + ", ".join(parts)
+    (st.success if fail_n == 0 else st.warning)(msg)
+    push_state_to_gist()
+    st.rerun()
 
 # Combined comparison chart
 st.subheader("Combined comparison")
@@ -765,18 +781,22 @@ for owner in ordered_owners:
 
                     if clicked:
                         age = _last_refresh_age_min(s)
-                        if age is not None and age < REFRESH_THROTTLE_MIN:
+                        throttled = age is not None and age < REFRESH_THROTTLE_MIN
+                        with st.spinner(
+                            f"Refreshing {key}..."
+                            + (" (deeplol only)" if throttled else "")
+                        ):
+                            result, stats = fetch_one_sync(s, with_mmr=not throttled)
+                            record_if_ok(s, result, stats)
+                            push_state_to_gist()
+                        if throttled:
                             st.info(
-                                f"{age:.1f}분 전에 갱신됨. "
-                                f"{REFRESH_THROTTLE_MIN}분 이내에는 skip합니다."
+                                f"MMR은 {age:.1f}분 전 갱신되어 skip — "
+                                f"deeplol 정보(레벨/최근 플레이)만 갱신됨."
                             )
+                        elif result and result.ok:
+                            st.success(f"MMR: {result.mmr}")
                         else:
-                            with st.spinner(f"Refreshing {key}..."):
-                                result, stats = fetch_one_sync(s)
-                                record_if_ok(s, result, stats)
-                                push_state_to_gist()
-                            if result.ok:
-                                st.success(f"MMR: {result.mmr}")
-                            else:
-                                st.error(f"Failed: {result.error}")
-                            st.rerun()
+                            err = (result and result.error) or "unknown error"
+                            st.error(f"Failed: {err}")
+                        st.rerun()
