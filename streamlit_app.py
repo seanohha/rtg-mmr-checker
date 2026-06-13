@@ -419,6 +419,32 @@ for _owner_rank, _owner in enumerate(ordered_owners):
         )
 
 
+@st.cache_data(ttl=60, show_spinner="deeplol 정보 갱신 중…")
+def refresh_deeplol_cached(
+    summoner_tuples: tuple[tuple[str, str, str], ...]
+) -> dict[str, dict]:
+    """Pull fresh level / last_played / flex aggregate from deeplol for every
+    summoner in parallel. Cached at 60s so each page load refreshes the
+    visible info even without a manual Refresh click. Returns {key: info}.
+    """
+    async def go():
+        async with httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=20.0) as c:
+            tasks = [
+                fetch_flex_stats(
+                    {"name": n, "tag": t, "region": r}, client=c
+                )
+                for n, t, r in summoner_tuples
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        out: dict[str, dict] = {}
+        for (n, t, _r), info in zip(summoner_tuples, results):
+            if isinstance(info, Exception) or not info:
+                continue
+            out[f"{n}#{t}"] = info
+        return out
+    return asyncio.run(go())
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_live_statuses_cached(puuid_region_pairs: tuple[tuple[str, str], ...]) -> dict[str, bool]:
     """Concurrently check live-game status for many summoners. TTL 30s so
@@ -437,6 +463,14 @@ def fetch_live_statuses_cached(puuid_region_pairs: tuple[tuple[str, str], ...]) 
         return out
     return asyncio.run(go())
 
+
+# Auto-refresh deeplol level / last_played / flex aggregate on every page
+# load (60s TTL). The result overlays the gist-hydrated deeplol_all so cards
+# always show recent data without requiring a manual Refresh click.
+_summoner_tuples = tuple((s["name"], s["tag"], s["region"]) for s in summoners)
+_fresh_deeplol = refresh_deeplol_cached(_summoner_tuples)
+for _k, _fresh in _fresh_deeplol.items():
+    deeplol_all[_k] = {**deeplol_all.get(_k, {}), **_fresh}
 
 # Build (puu_id, region) pairs for summoners that have a cached puu_id.
 _pairs: list[tuple[str, str]] = []
