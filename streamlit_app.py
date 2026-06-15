@@ -470,7 +470,19 @@ def fetch_live_statuses_cached(puuid_region_pairs: tuple[tuple[str, str], ...]) 
 _summoner_tuples = tuple((s["name"], s["tag"], s["region"]) for s in summoners)
 _fresh_deeplol = refresh_deeplol_cached(_summoner_tuples)
 for _k, _fresh in _fresh_deeplol.items():
-    deeplol_all[_k] = {**deeplol_all.get(_k, {}), **_fresh}
+    _existing = deeplol_all.get(_k, {})
+    _merged = {**_existing, **_fresh}
+    # Preserve cached last_played_at when fresh fetch transiently returns no
+    # matches (deeplol sometimes serves an empty match list for a few seconds).
+    if "last_played_at" not in _fresh and _existing.get("last_played_at"):
+        _merged["last_played_at"] = _existing["last_played_at"]
+    # Same defensive merge for flex aggregate fields — don't blank them out.
+    if "games" not in _fresh:
+        for _flex_key in ("games", "wins", "losses", "winrate",
+                          "avg_kills", "avg_deaths", "avg_assists", "kda"):
+            if _flex_key in _existing:
+                _merged.setdefault(_flex_key, _existing[_flex_key])
+    deeplol_all[_k] = _merged
 
 # Build (puu_id, region) pairs for summoners that have a cached puu_id.
 _pairs: list[tuple[str, str]] = []
