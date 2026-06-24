@@ -802,7 +802,14 @@ for owner in ordered_owners:
                                 st.caption(last["rank"])
                             if last.get("actual_mmr", "").strip() and last.get("actual_rank", "").strip():
                                 st.markdown(
-                                    f"<span style='font-size:11px;color:#8a96a8;opacity:0.75;'>actual: {last['actual_mmr']} · {last['actual_rank']}</span>",
+                                    f"<div style='font-size:13px;color:#cbd5e1;"
+                                    f"font-weight:600;line-height:1.3;margin-top:2px;'>"
+                                    f"<span style='font-size:11px;color:#8a96a8;"
+                                    f"font-weight:400;'>actual </span>"
+                                    f"<span>{last['actual_mmr']}</span>"
+                                    f"<span style='color:#8a96a8;font-weight:400;'> · </span>"
+                                    f"<span>{last['actual_rank']}</span>"
+                                    f"</div>",
                                     unsafe_allow_html=True,
                                 )
                         with c2:
