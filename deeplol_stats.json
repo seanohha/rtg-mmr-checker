@@ -97,12 +97,6 @@
     "kda": 2.24,
     "updated_at": "2026-07-01T20:24:03"
   },
-  "11695281del#KR1": {
-    "puu_id": "W-RcK1e4mplsgXVWjikZ_11F-E6uye_MKxX6ccf43e4jkT2pGTjWn00vG578TkXNtKB_YJQWsE-u-A",
-    "level": 23,
-    "last_played_at": 1780397836,
-    "updated_at": "2026-07-01T20:24:03"
-  },
   "떼그라호#0627": {
     "puu_id": "O8sDwdewO8JQJzl5BKRv59M-nDRbv8KSHDyDWqs1HIkUesskAicM1A2gxAL4uVP7pULmuDY9lBrBXg",
     "level": 115,
@@ -181,6 +175,12 @@
     "puu_id": "BBhrmnQL8XTk-yizttiZ--JVVvjiZO8MSr-yE9ky4Z1Z1I20bBT1Fyk34sRQqqUA9AKB73vjmJIMXA",
     "level": 33,
     "last_played_at": 1779363481,
+    "updated_at": "2026-07-01T20:24:03"
+  },
+  "tegrawall#1234": {
+    "puu_id": "W-RcK1e4mplsgXVWjikZ_11F-E6uye_MKxX6ccf43e4jkT2pGTjWn00vG578TkXNtKB_YJQWsE-u-A",
+    "level": 23,
+    "last_played_at": 1780397836,
     "updated_at": "2026-07-01T20:24:03"
   }
 }
