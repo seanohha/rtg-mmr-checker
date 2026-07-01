@@ -10,6 +10,7 @@ Two-step flow per summoner:
 """
 from __future__ import annotations
 
+import asyncio
 import time
 import urllib.parse
 from dataclasses import dataclass
@@ -143,44 +144,67 @@ async def fetch_summoner_info(
     client: httpx.AsyncClient | None = None,
     count: int = 50,
 ) -> dict | None:
-    """Fetch deeplol level + recent ranked-flex aggregate. Returns:
-      - None if the deeplol lookup failed (account not found)
-      - {"puu_id": str, "level": int, [optional flex fields...]} otherwise
+    """Composite summoner info: puu_id + flex KDA from deeplol,
+    level + last_played from blitz.gg (with deeplol fallback).
 
-    A summoner with no recent flex games still returns level + puu_id so
-    the card can show their account level / live-status even when the
-    flex section is empty.
+    Deeplol's `puu_id` stays authoritative because both the /match/matches
+    endpoint AND the ingame-check worker key on deeplol's internal puuid,
+    which sometimes differs from the current Riot canonical PUUID that
+    blitz returns (e.g. renamed accounts, cache lag). Using blitz's
+    puuid for deeplol calls returns empty match lists.
+
+    Blitz is queried in parallel as an overlay for `level` (fresher —
+    e.g. blitz shows Lv.115 while deeplol still caches Lv.103) and
+    `last_played_at` (blitz derives it from Riot's champion-mastery
+    service, which updates promptly at game end).
     """
+    from blitz_stats import BLITZ_HEADERS, fetch_blitz_basic
+
     own = client is None
     if own:
         client = httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=30.0)
     try:
-        puuid, level = await _resolve_summoner(summoner, client)
+        # Deeplol resolve — authoritative puu_id for downstream deeplol calls.
+        async with httpx.AsyncClient(headers=BLITZ_HEADERS, timeout=15.0) as bc:
+            blitz_task = asyncio.create_task(fetch_blitz_basic(summoner, client=bc))
+            puuid, dp_level = await _resolve_summoner(summoner, client)
+            blitz_basic = await blitz_task
+
         if not puuid:
-            return None
+            # Deeplol couldn't find the account. Best-effort blitz-only
+            # payload so cards for renamed accounts still show level.
+            return blitz_basic or None
+
         out: dict = {"puu_id": puuid}
-        if level is not None:
-            out["level"] = level
+        if dp_level is not None:
+            out["level"] = dp_level
+
+        # Overlay blitz fields (blitz wins for level / last_played).
+        if blitz_basic:
+            if "level" in blitz_basic:
+                out["level"] = blitz_basic["level"]
+            if "last_played_at" in blitz_basic:
+                out["last_played_at"] = blitz_basic["last_played_at"]
+
+        # Deeplol match list for the recent-flex KDA aggregate + last_played
+        # fallback if blitz didn't have it.
         matches = await _fetch_matches(
             puuid, summoner["region"], QUEUE_FLEX, count, client
         )
-        # Last-played: max (creation_timestamp + game_duration) across ALL
-        # fetched matches, regardless of queue — i.e. when the most recent
-        # game ENDED, which is what deeplol's own web UI shows. Using start
-        # time alone was off by ~30-40 min for typical Summoner's Rift
-        # games. Both fields are in unix seconds.
-        last_played = None
-        for m in matches:
-            mb = m.get("match_basic_dict") or {}
-            ct = mb.get("creation_timestamp")
-            if ct is None:
-                continue
-            dur = mb.get("game_duration") or 0
-            end_ts = int(ct) + int(dur)
-            if last_played is None or end_ts > last_played:
-                last_played = end_ts
-        if last_played is not None:
-            out["last_played_at"] = last_played
+        if "last_played_at" not in out:
+            deeplol_last = None
+            for m in matches:
+                mb = m.get("match_basic_dict") or {}
+                ct = mb.get("creation_timestamp")
+                if ct is None:
+                    continue
+                dur = mb.get("game_duration") or 0
+                end_ts = int(ct) + int(dur)
+                if deeplol_last is None or end_ts > deeplol_last:
+                    deeplol_last = end_ts
+            if deeplol_last is not None:
+                out["last_played_at"] = deeplol_last
+
         flex = _aggregate(matches, puuid)
         if flex is not None:
             out.update(flex.to_dict())
