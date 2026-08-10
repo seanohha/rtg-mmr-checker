@@ -131,3 +131,57 @@ async def fetch_mmr(
     finally:
         if own_client:
             await client.aclose()
+
+
+async def fetch_mmr_with_fallback(
+    summoner: dict,
+    rk_client: httpx.AsyncClient | None = None,
+    blitz_client: httpx.AsyncClient | None = None,
+    max_attempts: int = 8,
+    poll_delay: float = 3.0,
+) -> MMRResult:
+    """Try rankedkings first. If it fails (service down / no recent games /
+    any other 400), fall back to a blitz.gg-derived numeric MMR from the
+    latest RANKED_FLEX_SR snapshot. The synthesized MMRResult keeps
+    actual_mmr / actual_rank empty since blitz doesn't compute a distinct
+    "actual" — only the current rank."""
+    result = await fetch_mmr(
+        summoner, client=rk_client, max_attempts=max_attempts, poll_delay=poll_delay
+    )
+    if result.ok:
+        return result
+
+    # Only fall back for the specific "we couldn't get a rank" errors; a
+    # timeout or transport error should propagate as-is so the caller sees it.
+    err = (result.error or "").lower()
+    if "http 400" not in err and "empty" not in err and "queued" not in err:
+        return result
+
+    from blitz_stats import BLITZ_HEADERS, fetch_blitz_flex_current
+
+    own = blitz_client is None
+    if own:
+        blitz_client = httpx.AsyncClient(headers=BLITZ_HEADERS, timeout=15.0)
+    try:
+        blitz = await fetch_blitz_flex_current(summoner, client=blitz_client)
+    finally:
+        if own:
+            await blitz_client.aclose()
+
+    if not blitz:
+        # Both sources failed — return the original rankedkings error so the
+        # UI can explain what happened.
+        return result
+
+    return MMRResult(
+        ok=True,
+        mmr=blitz["mmr"],
+        rank=blitz["rank"],
+        tier=blitz["tier"],
+        division=blitz["division"],
+        lp=blitz["lp"],
+        actual_mmr=None,
+        actual_rank=None,
+        raw={"source": "blitz", **blitz, "rankedkings_error": result.error},
+        error=None,
+    )

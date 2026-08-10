@@ -27,9 +27,10 @@ except ImportError:
     # doesn't define fetch_live_status, fall back to a no-op so the rest of
     # the app still loads.
     fetch_live_status = None  # type: ignore
+from blitz_stats import BLITZ_HEADERS
 import gist_storage
 from history import append_record, group_by_summoner, read_history
-from mmr_fetcher import DEFAULT_HEADERS, fetch_mmr
+from mmr_fetcher import DEFAULT_HEADERS, fetch_mmr_with_fallback
 
 ROOT = Path(__file__).parent
 CONFIG_PATH = ROOT / "config.json"
@@ -133,13 +134,18 @@ def fetch_one_sync(summoner: dict, with_mmr: bool = True):
     async def go():
         async with (
             httpx.AsyncClient(headers=DEFAULT_HEADERS, timeout=30.0) as mmr_client,
+            httpx.AsyncClient(headers=BLITZ_HEADERS, timeout=15.0) as blitz_client,
             httpx.AsyncClient(headers=DEEPLOL_HEADERS, timeout=30.0) as dl_client,
         ):
             stats_task = asyncio.create_task(fetch_flex_stats(summoner, client=dl_client))
             if not with_mmr:
                 stats = await stats_task
                 return None, stats
-            mmr_task = asyncio.create_task(fetch_mmr(summoner, client=mmr_client))
+            mmr_task = asyncio.create_task(
+                fetch_mmr_with_fallback(
+                    summoner, rk_client=mmr_client, blitz_client=blitz_client
+                )
+            )
             return await asyncio.gather(mmr_task, stats_task)
     return asyncio.run(go())
 
