@@ -114,12 +114,17 @@ def _hydrate_from_gist_once() -> dict:
     return {"configured": True, "history_loaded": h_ok, "stats_loaded": s_ok}
 
 
-def push_state_to_gist() -> bool:
-    """Push local state to gist. Merges with whatever's already in the gist
-    first so concurrent sessions don't clobber each other's appends."""
+def push_state_to_gist() -> tuple[bool, str]:
+    """Push local state to gist. Returns (ok, reason). Merges with whatever
+    is already in the gist first so concurrent sessions don't clobber each
+    other's appends."""
     if not gist_storage.configured():
-        return False
-    return gist_storage.push_with_merge(history_path(), str(DEEPLOL_STATS_PATH))
+        return False, "gist secrets not configured (token/gist_id missing)"
+    try:
+        ok = gist_storage.push_with_merge(history_path(), str(DEEPLOL_STATS_PATH))
+    except Exception as e:  # network / auth / etc.
+        return False, f"push exception: {e}"
+    return ok, "" if ok else "push returned False (auth failure or 4xx from GitHub)"
 
 
 def get_summoners() -> list[dict]:
@@ -385,7 +390,23 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-_hydrate_from_gist_once()  # Pulls remote state into local files on first run.
+_hydrate_status = _hydrate_from_gist_once()
+# Warn loudly if gist persistence isn't working — otherwise every refresh
+# quietly writes to a local file that vanishes on container restart, and
+# the app reverts to the committed repo snapshot on the next page load.
+if not _hydrate_status.get("configured"):
+    st.error(
+        "⚠️ Gist 연동 secrets 미설정 — refresh 결과가 저장되지 않고 "
+        "컨테이너 재시작 시 사라집니다. Streamlit Cloud > Manage app > "
+        "Secrets 에 `[gist] token=... gist_id=...` 를 설정하세요."
+    )
+elif not _hydrate_status.get("history_loaded"):
+    st.warning(
+        "⚠️ Gist에서 mmr_history를 읽지 못했습니다. token이 만료됐거나 "
+        "권한이 부족할 수 있어요. 이 상태에서 refresh 하면 이후 앱 재시작 "
+        "시 오늘 데이터가 사라질 수 있습니다."
+    )
+
 summoners = get_summoners()
 hist_rows = read_history(history_path())
 grouped = group_by_summoner(hist_rows)
@@ -600,7 +621,12 @@ if refresh_all_clicked:
         parts.append(f"{skip_n} deeplol-only")
     msg = f"Refresh complete ({format_seconds(elapsed)}): " + ", ".join(parts)
     (st.success if fail_n == 0 else st.warning)(msg)
-    push_state_to_gist()
+    pushed, reason = push_state_to_gist()
+    if not pushed:
+        st.error(
+            f"⚠️ Gist에 저장 실패 — 이 세션 종료 후 데이터가 사라집니다. "
+            f"이유: {reason}"
+        )
     st.rerun()
 
 # Combined comparison chart
@@ -849,7 +875,9 @@ for owner in ordered_owners:
                         ):
                             result, stats = fetch_one_sync(s, with_mmr=not throttled)
                             record_if_ok(s, result, stats)
-                            push_state_to_gist()
+                            pushed, reason = push_state_to_gist()
+                        if not pushed:
+                            st.error(f"⚠️ Gist 저장 실패: {reason}")
                         if throttled:
                             st.info(
                                 f"MMR은 {age:.1f}분 전 갱신되어 skip — "
